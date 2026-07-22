@@ -1,0 +1,165 @@
+# 8-Week Challenge — Deployment Setup Guide
+
+This guide walks you through getting the hosted site live with Supabase (database + auth + storage) and Stripe (payments), deployed on Netlify.
+
+## What you need
+
+- A free [Supabase](https://supabase.com) account
+- A free [Stripe](https://stripe.com) account
+- A free [Netlify](https://netlify.com) account (or any static host)
+- About 30 minutes
+
+---
+
+## Step 1: Create a Supabase project
+
+1. Go to [supabase.com](https://supabase.com) and sign in.
+2. Click **New Project**.
+3. Give it a name like `eight-week-challenge` and choose a region close to your entrants.
+4. Save the generated **Project URL** and **anon public API key** — you’ll paste them into the code in Step 4.
+
+---
+
+## Step 2: Set up the database
+
+1. In Supabase, open the **SQL Editor**.
+2. Create a **New query**.
+3. Copy the entire contents of `supabase-setup.sql` from this folder and paste it in.
+4. Click **Run**.
+
+This creates:
+- `profiles` table (one row per entrant)
+- `checkins` table (weekly weigh-ins)
+- Row Level Security policies (entrants only see their own data; admins see everything)
+- A public `get_leaderboard()` function for the leaderboard page
+- A private `weighin-photos` storage bucket for official weigh-in photos
+- Triggers that keep the profile row in sync with the auth user
+
+---
+
+## Step 3: Configure Supabase Auth
+
+### Option A — Keep email confirmation enabled (recommended for production)
+
+1. In Supabase, go to **Authentication > Providers**.
+2. Make sure **Email** is enabled.
+3. Go to **Authentication > Email Templates** and review the confirmation email.
+4. For production, go to **Authentication > SMTP** and connect your own email provider so confirmation emails don’t land in spam.
+
+### Option B — Disable email confirmation (faster for testing)
+
+1. In Supabase, go to **Authentication > Providers > Email**.
+2. Turn **Confirm email** OFF.
+3. This lets entrants sign up and log in immediately without clicking a confirmation link.
+
+---
+
+## Step 4: Paste your Supabase credentials into the code
+
+1. Open `js/supabase-client.js`.
+2. Replace:
+   - `https://YOUR_PROJECT_ID.supabase.co` with your Supabase **Project URL**
+   - `YOUR_SUPABASE_ANON_KEY` with your Supabase **anon public API key**
+3. Save the file.
+
+---
+
+## Step 5: Set up Stripe Payment Links
+
+1. Log in to your [Stripe Dashboard](https://dashboard.stripe.com).
+2. Go to **Payment Links** and create two products:
+   - **Standard** — $280, one-time payment
+   - **Face-to-Face** — $792, one-time payment
+3. For each Payment Link, set the **After payment** redirect URL to:
+   `https://YOUR_NETLIFY_SITE_URL/payment-success.html`
+4. Copy each Payment Link URL.
+5. Open `signup.html` and replace:
+   - `https://buy.stripe.com/YOUR_STANDARD_PAYMENT_LINK` with the Standard link
+   - `https://buy.stripe.com/YOUR_F2F_PAYMENT_LINK` with the F2F link
+6. Save the file.
+
+> The sign-up page automatically appends the entrant’s `client_reference_id` and `prefilled_email` to the Stripe link, so you can match payments to users in the Stripe Dashboard.
+
+---
+
+## Step 6: Make yourself an admin
+
+1. Deploy the site first (see Step 7) so you can sign up through the normal sign-up form.
+2. Sign up on your live site as the organiser.
+3. In Supabase, open the **Table Editor > profiles**.
+4. Find your row and change `is_admin` to `true`.
+5. Now when you log in and visit `admin.html`, the admin panel will load.
+
+---
+
+## Step 7: Deploy to Netlify
+
+1. Log in to [Netlify](https://netlify.com).
+2. Drag and drop this entire project folder onto the Netlify deploy area, **or** connect a Git repo.
+3. Netlify will give you a site URL like `https://eight-week-challenge-abc123.netlify.app`.
+4. Replace `YOUR_NETLIFY_SITE_URL` in Step 5 with that URL, then redeploy if needed.
+
+### Custom domain (optional)
+
+If you own a domain, go to **Netlify > Domain settings** and connect it. Then update the Stripe redirect URL to use your custom domain.
+
+---
+
+## Step 8: Test the full flow
+
+1. Visit your live site and click **Enter Now**.
+2. Sign up as a test entrant with a real email.
+3. You should be redirected to Stripe.
+4. Complete a test payment (use Stripe test card `4242 4242 4242 4242`, any future date, any CVC, any ZIP).
+5. You land on `payment-success.html`.
+6. In Supabase, set your test entrant’s `paid` flag to `true` (this is what you’ll do for real entrants after checking Stripe).
+7. Log in at `login.html`.
+8. Submit a Week 0 weigh-in in kg and upload a photo.
+9. Submit a Week 1 weigh-in in kg.
+10. Visit `leaderboard.html` — your test entrant should appear.
+
+---
+
+## Step 9: Running the challenge each week
+
+| Day | Action |
+|-----|--------|
+| Monday | Post the updated leaderboard to the community group. Review any safety flags in `admin.html`. |
+| Sunday | Remind entrants to check in before the deadline. |
+| Anytime | Mark entrants paid in `admin.html` after confirming their Stripe payment. |
+| Week 4 & 8 | Remind entrants to upload their official weigh-in photo. |
+
+---
+
+## Common issues
+
+### “Supabase credentials are still placeholders”
+
+You forgot to update `js/supabase-client.js`. The sign-up page will refuse to redirect to Stripe until you do.
+
+### Sign-up fails with “Email not confirmed”
+
+Email confirmation is still enabled in Supabase. Either configure SMTP properly or disable confirmation in Auth settings.
+
+### Leaderboard is empty
+
+The leaderboard only shows **paid** entrants with a **Week 0 baseline** submitted. Make sure the entrant is marked paid and has submitted a Week 0 check-in.
+
+### Admin page redirects to dashboard
+
+Your profile row has `is_admin = false`. Update it in Supabase.
+
+### Photo uploads fail
+
+Check that you ran `supabase-setup.sql` completely, including the storage bucket and storage policies.
+
+---
+
+## Switching from kg to lb later
+
+All user-facing copy and code uses kilograms. To switch back to pounds, you would need to:
+1. Update labels from “kg” to “lb” across all pages.
+2. Rename database columns (`weight_kg` → `weight_lb`) or just treat the numeric values as pounds.
+3. Update the leaderboard function to reference the new column name.
+
+For now, everything is built for kilograms as requested.

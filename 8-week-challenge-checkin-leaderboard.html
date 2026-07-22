@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Week Challenge - Check In & Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c1f1a;
+    --ink-soft:#4a4d43;
+    --paper:#eeece2;
+    --paper-2:#e2ded0;
+    --paper-3:#f7f5ec;
+    --red:#df4a34;
+    --red-dark:#b93a29;
+    --yellow:#f0b409;
+    --gold:#c9971f;
+    --silver:#8a8a8a;
+    --bronze:#a5652f;
+    --line:#b9b39f;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:28px 20px 80px;}
+
+  .brand{
+    font-family:'Oswald',sans-serif;font-weight:700;letter-spacing:0.02em;
+    font-size:17px;text-transform:uppercase;display:flex;align-items:center;gap:8px;
+    margin-bottom:22px;
+  }
+  .brand .dot{width:9px;height:9px;background:var(--red);border-radius:50%;display:inline-block;}
+
+  .tabs{display:flex;border:1.5px solid var(--ink);border-radius:var(--radius);overflow:hidden;margin-bottom:28px;}
+  .tab{
+    flex:1;text-align:center;padding:14px;font-family:'IBM Plex Mono',monospace;
+    font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;
+    background:var(--paper-3);cursor:pointer;border:none;color:var(--ink-soft);
+  }
+  .tab + .tab{border-left:1.5px solid var(--ink);}
+  .tab.active{background:var(--ink);color:var(--paper-3);}
+
+  .view{display:none;}
+  .view.active{display:block;}
+
+  h1{
+    font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;
+    font-size:26px;margin:0 0 6px;letter-spacing:-0.01em;
+  }
+  .sub{font-size:14px;color:var(--ink-soft);margin:0 0 26px;line-height:1.5;}
+
+  .card{
+    background:var(--paper-3);border:1.5px solid var(--ink);border-radius:var(--radius);
+    padding:30px;
+  }
+
+  .form-row{margin-bottom:18px;}
+  .form-row label{
+    display:block;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);margin-bottom:7px;
+  }
+  .form-row input, .form-row select{
+    width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--radius);
+    font-family:'Inter',sans-serif;font-size:15px;background:#fff;color:var(--ink);
+  }
+  .form-row input:focus, .form-row select:focus{outline:none;border-color:var(--red);}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+
+  .submit-btn{
+    width:100%;background:var(--red);color:#fff;border:none;padding:16px;
+    font-weight:700;font-size:14.5px;text-transform:uppercase;letter-spacing:0.03em;
+    border-radius:var(--radius);cursor:pointer;
+  }
+  .submit-btn:hover{background:var(--red-dark);}
+  .submit-btn:disabled{opacity:0.6;cursor:not-allowed;}
+
+  .msg{
+    margin-top:16px;padding:13px 16px;border-radius:var(--radius);font-size:13.5px;
+    display:none;
+  }
+  .msg.show{display:block;}
+  .msg.success{background:rgba(60,120,60,0.1);border:1px solid #3c783c;color:#2c5c2c;}
+  .msg.error{background:rgba(223,74,52,0.08);border:1px solid var(--red);color:var(--red-dark);}
+
+  /* leaderboard */
+  .lb-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .lb-updated{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-soft);}
+  .refresh-btn{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+    background:none;border:1.5px solid var(--ink);border-radius:var(--radius);
+    padding:8px 14px;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;
+  }
+  .refresh-btn:hover{background:var(--ink);color:var(--paper-3);}
+
+  .lb-row{
+    display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:14px;
+    background:var(--paper-3);border:1px solid var(--line);border-radius:var(--radius);
+    padding:14px 18px;margin-bottom:8px;
+  }
+  .lb-row.r1{border-color:var(--gold);border-width:1.5px;}
+  .lb-row.r2{border-color:var(--silver);border-width:1.5px;}
+  .lb-row.r3{border-color:var(--bronze);border-width:1.5px;}
+  .lb-rank{font-family:'Oswald',sans-serif;font-weight:700;font-size:19px;color:var(--ink-soft);}
+  .lb-row.r1 .lb-rank{color:var(--gold);}
+  .lb-row.r2 .lb-rank{color:var(--silver);}
+  .lb-row.r3 .lb-rank{color:var(--bronze);}
+  .lb-name{font-weight:600;font-size:14.5px;}
+  .lb-sub{font-size:12px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;margin-top:2px;}
+  .lb-pct{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:var(--red);text-align:right;}
+
+  .empty, .loading{
+    text-align:center;padding:40px 20px;color:var(--ink-soft);font-size:14px;
+  }
+
+  .note{
+    margin-top:20px;font-size:12px;color:var(--ink-soft);line-height:1.6;
+    border-top:1px solid var(--line);padding-top:16px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand"><span class="dot"></span>8-Week Challenge</div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabBtnCheckin" onclick="showView('checkin')">Check In</button>
+    <button class="tab" id="tabBtnBoard" onclick="showView('board')">Leaderboard</button>
+  </div>
+
+  <!-- CHECK IN VIEW -->
+  <div class="view active" id="view-checkin">
+    <h1>Weekly Check-In</h1>
+    <p class="sub">Log your weight and week number below. Use the same name and PIN every week so your progress lines up on the leaderboard.</p>
+
+    <div class="card">
+      <form id="checkinForm" onsubmit="handleCheckin(event)">
+        <div class="form-row">
+          <label for="ciName">Full name</label>
+          <input type="text" id="ciName" required placeholder="Jordan Riley">
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="ciPin">4-digit PIN</label>
+            <input type="text" id="ciPin" required maxlength="4" inputmode="numeric" pattern="[0-9]{4}" placeholder="1234">
+          </div>
+          <div class="form-row">
+            <label for="ciWeek">Week</label>
+            <select id="ciWeek" required>
+              <option value="0">Week 0 (baseline)</option>
+              <option value="1">Week 1</option>
+              <option value="2">Week 2</option>
+              <option value="3">Week 3</option>
+              <option value="4">Week 4</option>
+              <option value="5">Week 5</option>
+              <option value="6">Week 6</option>
+              <option value="7">Week 7</option>
+              <option value="8">Week 8 (final)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="ciWeight">Current weight (lbs)</label>
+          <input type="number" id="ciWeight" required min="60" max="600" step="0.1" placeholder="182.4">
+        </div>
+        <div class="form-row">
+          <label for="ciTier">Format</label>
+          <select id="ciTier">
+            <option value="standard">Standard ($35/week)</option>
+            <option value="f2f">Face-to-Face ($99/week)</option>
+          </select>
+        </div>
+        <button type="submit" class="submit-btn" id="ciSubmitBtn">Submit Check-In</button>
+        <div class="msg" id="ciMsg"></div>
+      </form>
+      <p class="note">First time here? Pick any 4-digit PIN and use it every week, it's how the board recognizes you again. It's a simple lookup, not real security, so don't reuse a PIN you use elsewhere.</p>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD VIEW -->
+  <div class="view" id="view-board">
+    <h1>Live Leaderboard</h1>
+    <p class="sub">Ranked by percent of body weight lost from Week 0. Refreshes automatically, or tap refresh anytime.</p>
+
+    <div class="lb-head">
+      <span class="lb-updated" id="lbUpdated">Not loaded yet</span>
+      <button class="refresh-btn" onclick="loadLeaderboard()">Refresh</button>
+    </div>
+
+    <div id="lbContent">
+      <div class="loading">Loading leaderboard...</div>
+    </div>
+
+    <p class="note">Only rank and percent progress are shown here, never raw weight, to keep individual numbers private. Weeks logged counts how many check-ins (Week 1 through 8) that person has submitted.</p>
+  </div>
+
+</div>
+
+<script>
+  function showView(name){
+    document.getElementById('view-checkin').classList.toggle('active', name === 'checkin');
+    document.getElementById('view-board').classList.toggle('active', name === 'board');
+    document.getElementById('tabBtnCheckin').classList.toggle('active', name === 'checkin');
+    document.getElementById('tabBtnBoard').classList.toggle('active', name === 'board');
+    if(name === 'board'){ loadLeaderboard(); }
+  }
+
+  function slugify(name){
+    return name.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-+|-+$)/g,'');
+  }
+
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  async function handleCheckin(e){
+    e.preventDefault();
+    const btn = document.getElementById('ciSubmitBtn');
+    const msg = document.getElementById('ciMsg');
+    msg.className = 'msg';
+
+    const name = document.getElementById('ciName').value.trim();
+    const pin = document.getElementById('ciPin').value.trim();
+    const week = document.getElementById('ciWeek').value;
+    const weight = parseFloat(document.getElementById('ciWeight').value);
+    const tier = document.getElementById('ciTier').value;
+
+    if(!/^[0-9]{4}$/.test(pin)){
+      showMsg(msg, 'PIN must be exactly 4 digits.', 'error');
+      return;
+    }
+
+    const slug = slugify(name);
+    if(!slug){
+      showMsg(msg, 'Please enter your name.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try{
+      let existing = null;
+      try{
+        const r = await window.storage.get('participant:' + slug, true);
+        existing = r ? JSON.parse(r.value) : null;
+      } catch(err){
+        existing = null;
+      }
+
+      if(existing){
+        if(existing.pin !== pin){
+          showMsg(msg, 'That name is already registered with a different PIN. Double check your PIN, or check in under your full name exactly as you used it before.', 'error');
+          btn.disabled = false;
+          btn.textContent = 'Submit Check-In';
+          return;
+        }
+      } else {
+        existing = { name: name, pin: pin, tier: tier, weights: {}, joined: Date.now() };
+      }
+
+      existing.tier = tier;
+      existing.weights[week] = weight;
+
+      await window.storage.set('participant:' + slug, JSON.stringify(existing), true);
+
+      showMsg(msg, 'Check-in saved for Week ' + week + '. Nice work.', 'success');
+      document.getElementById('ciWeight').value = '';
+    } catch(err){
+      console.error(err);
+      showMsg(msg, 'Something went wrong saving your check-in. Please try again in a moment.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Submit Check-In';
+    }
+  }
+
+  async function loadLeaderboard(){
+    const content = document.getElementById('lbContent');
+    const updated = document.getElementById('lbUpdated');
+    content.innerHTML = '<div class="loading">Loading leaderboard...</div>';
+
+    try{
+      let listRes = null;
+      try{
+        listRes = await window.storage.list('participant:', true);
+      } catch(err){
+        listRes = null;
+      }
+      const keys = (listRes && listRes.keys) ? listRes.keys : [];
+
+      if(keys.length === 0){
+        content.innerHTML = '<div class="empty">No check-ins yet. Be the first to submit a Week 0 weigh-in.</div>';
+        updated.textContent = 'Updated ' + new Date().toLocaleTimeString();
+        return;
+      }
+
+      const rows = [];
+      for(const key of keys){
+        try{
+          const r = await window.storage.get(key, true);
+          if(!r) continue;
+          const data = JSON.parse(r.value);
+          const weekNums = Object.keys(data.weights).map(Number);
+          if(!weekNums.includes(0)) continue;
+
+          const baseline = data.weights[0];
+          const latestWeek = Math.max.apply(null, weekNums);
+          const latest = data.weights[latestWeek];
+          const pct = baseline > 0 ? ((baseline - latest) / baseline * 100) : 0;
+          const weeksLogged = weekNums.filter(function(w){ return w > 0; }).length;
+
+          rows.push({ name: data.name, pct: pct, weeksLogged: weeksLogged });
+        } catch(err){
+          continue;
+        }
+      }
+
+      rows.sort(function(a, b){ return b.pct - a.pct; });
+
+      if(rows.length === 0){
+        content.innerHTML = '<div class="empty">Everyone has registered, but no one has a Week 0 baseline yet.</div>';
+      } else {
+        let html = '';
+        rows.forEach(function(row, i){
+          const rankClass = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
+          const pctText = (row.pct >= 0 ? '-' : '+') + Math.abs(row.pct).toFixed(1) + '%';
+          html += '<div class="lb-row ' + rankClass + '">' +
+            '<div class="lb-rank">' + (i + 1) + '</div>' +
+            '<div><div class="lb-name">' + escapeHtml(row.name) + '</div>' +
+            '<div class="lb-sub">' + row.weeksLogged + '/8 weeks logged</div></div>' +
+            '<div class="lb-pct">' + pctText + '</div>' +
+          '</div>';
+        });
+        content.innerHTML = html;
+      }
+
+      updated.textContent = 'Updated ' + new Date().toLocaleTimeString();
+    } catch(err){
+      console.error(err);
+      content.innerHTML = '<div class="empty">Could not load the leaderboard right now. Try refreshing.</div>';
+    }
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  setInterval(function(){
+    if(document.getElementById('view-board').classList.contains('active')){
+      loadLeaderboard();
+    }
+  }, 20000);
+</script>
+</body>
+</html>

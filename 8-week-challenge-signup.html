@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Week Challenge, Entry Form</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c1f1a;
+    --ink-soft:#4a4d43;
+    --paper:#eeece2;
+    --paper-2:#e2ded0;
+    --paper-3:#f7f5ec;
+    --red:#df4a34;
+    --red-dark:#b93a29;
+    --yellow:#f0b409;
+    --line:#b9b39f;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:0 24px;}
+  a{color:inherit;}
+
+  /* ---------- nav ---------- */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 24px;
+    max-width:1040px;margin:0 auto;
+  }
+  .brand{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    letter-spacing:0.02em;
+    font-size:18px;
+    text-transform:uppercase;
+    display:flex;align-items:center;gap:8px;
+  }
+  .brand .dot{width:9px;height:9px;background:var(--red);border-radius:50%;display:inline-block;}
+  .nav-links{display:flex;gap:28px;font-size:14px;font-weight:500;}
+  .nav-links a{text-decoration:none;color:var(--ink-soft);}
+  .nav-links a:hover{color:var(--ink);}
+  .nav-cta{
+    background:var(--ink);color:var(--paper-3);
+    padding:9px 18px;font-size:13px;font-weight:600;
+    text-decoration:none;letter-spacing:0.02em;text-transform:uppercase;
+    border-radius:var(--radius);
+  }
+  .nav-cta:hover{background:var(--red-dark);}
+  @media(max-width:640px){.nav-links{display:none;}}
+
+  /* ---------- hero ---------- */
+  .hero{padding:64px 0 40px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;font-weight:600;
+    color:var(--red-dark);
+    text-transform:uppercase;letter-spacing:0.12em;
+    margin-bottom:18px;
+  }
+  h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    font-size:clamp(38px,6vw,64px);
+    line-height:1.02;
+    letter-spacing:-0.01em;
+    text-transform:uppercase;
+    margin:0 0 20px;
+  }
+  h1 em{font-style:normal;color:var(--red);}
+  .hero-sub{
+    font-size:18px;line-height:1.55;color:var(--ink-soft);
+    max-width:520px;margin:0 0 32px;
+  }
+  .hero-actions{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:56px;}
+  .btn-primary{
+    background:var(--red);color:#fff;
+    padding:15px 28px;font-weight:600;font-size:15px;
+    text-decoration:none;border-radius:var(--radius);
+    text-transform:uppercase;letter-spacing:0.02em;
+    display:inline-block;border:none;cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn-primary:hover{background:var(--red-dark);}
+  .btn-ghost{
+    color:var(--ink);text-decoration:none;font-weight:600;font-size:15px;
+    border-bottom:2px solid var(--ink);padding-bottom:2px;
+  }
+
+  /* ---------- ticket stub (signature element) ---------- */
+  .ticket{
+    position:relative;
+    background:var(--paper-3);
+    border:1.5px solid var(--ink);
+    border-radius:var(--radius);
+    display:grid;
+    grid-template-columns:1fr auto 200px;
+    overflow:visible;
+  }
+  .ticket-main{padding:28px 32px;}
+  .ticket-num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;color:var(--ink-soft);
+    text-transform:uppercase;letter-spacing:0.1em;
+    margin-bottom:10px;
+  }
+  .ticket-title{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;font-size:26px;text-transform:uppercase;
+    margin:0 0 8px;
+  }
+  .ticket-desc{font-size:14px;color:var(--ink-soft);max-width:340px;}
+  .perf{
+    position:relative;
+    border-left:2px dashed var(--line);
+    border-right:2px dashed var(--line);
+  }
+  .perf::before,.perf::after{
+    content:"";position:absolute;left:50%;transform:translateX(-50%);
+    width:20px;height:20px;background:var(--paper);border-radius:50%;
+  }
+  .perf::before{top:-10px;}
+  .perf::after{bottom:-10px;}
+  .ticket-stub{
+    padding:28px 24px;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    text-align:center;gap:4px;
+  }
+  .stub-amt{
+    font-family:'Oswald',sans-serif;font-weight:700;
+    font-size:34px;color:var(--red);line-height:1;
+  }
+  .stub-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;text-transform:uppercase;letter-spacing:0.08em;
+    color:var(--ink-soft);
+  }
+  @media(max-width:720px){
+    .ticket{grid-template-columns:1fr;}
+    .perf{border-left:none;border-right:none;border-top:2px dashed var(--line);}
+    .perf::before{left:-10px;top:50%;transform:translateY(-50%);}
+    .perf::after{left:auto;right:-10px;top:50%;transform:translateY(-50%);}
+  }
+
+  /* ---------- section shared ---------- */
+  section{padding:64px 0;border-top:1px solid var(--line);}
+  .sec-head{margin-bottom:36px;}
+  .sec-eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+    text-transform:uppercase;letter-spacing:0.12em;color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  h2{
+    font-family:'Oswald',sans-serif;font-weight:700;text-transform:uppercase;
+    font-size:clamp(26px,3.4vw,36px);margin:0;letter-spacing:-0.01em;
+  }
+
+  /* ---------- weekly rhythm ---------- */
+  .rhythm{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+  .rhythm-row{
+    display:grid;grid-template-columns:100px 1fr;
+    border-bottom:1px solid var(--line);
+    background:var(--paper-3);
+  }
+  .rhythm-row:last-child{border-bottom:none;}
+  .rhythm-day{
+    font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;
+    padding:18px 16px;background:var(--paper-2);
+    display:flex;align-items:center;text-transform:uppercase;letter-spacing:0.05em;
+  }
+  .rhythm-text{padding:18px 20px;font-size:15px;color:var(--ink-soft);display:flex;align-items:center;}
+  .rhythm-text strong{color:var(--ink);font-weight:600;}
+
+  /* ---------- pricing ---------- */
+  .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  @media(max-width:720px){.pricing-grid{grid-template-columns:1fr;}}
+  .price-card{
+    border:1.5px solid var(--ink);border-radius:var(--radius);
+    background:var(--paper-3);padding:32px;
+    display:flex;flex-direction:column;
+  }
+  .price-card.featured{border-color:var(--red);position:relative;}
+  .price-tag{
+    position:absolute;top:-13px;right:24px;
+    background:var(--red);color:#fff;font-size:11px;font-weight:700;
+    padding:4px 10px;text-transform:uppercase;letter-spacing:0.08em;
+    font-family:'IBM Plex Mono',monospace;border-radius:var(--radius);
+  }
+  .price-name{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;
+    letter-spacing:0.1em;color:var(--ink-soft);margin-bottom:10px;
+  }
+  .price-num{
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:44px;
+    margin-bottom:2px;
+  }
+  .price-num span{font-size:16px;font-weight:500;font-family:'Inter',sans-serif;color:var(--ink-soft);}
+  .price-total{font-size:13px;color:var(--ink-soft);margin-bottom:22px;font-family:'IBM Plex Mono',monospace;}
+  .price-list{list-style:none;padding:0;margin:0 0 24px;flex:1;}
+  .price-list li{
+    font-size:14.5px;padding:9px 0;border-top:1px solid var(--paper-2);
+    display:flex;gap:10px;color:var(--ink-soft);
+  }
+  .price-list li:first-child{border-top:none;}
+  .price-list li::before{content:"-";color:var(--red);flex-shrink:0;}
+  .price-select{
+    text-align:center;padding:13px;border-radius:var(--radius);
+    font-weight:600;font-size:14px;text-transform:uppercase;letter-spacing:0.02em;
+    border:1.5px solid var(--ink);background:transparent;cursor:pointer;
+  }
+  .price-card.featured .price-select{background:var(--red);color:#fff;border-color:var(--red);}
+
+  /* ---------- prize podium ---------- */
+  .podium{display:flex;flex-direction:column;gap:10px;}
+  .prow{
+    display:grid;grid-template-columns:56px 1fr auto;align-items:center;gap:16px;
+    background:var(--paper-3);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 20px;
+  }
+  .prow.gold{border-color:var(--yellow);border-width:1.5px;}
+  .prank{
+    font-family:'Oswald',sans-serif;font-weight:700;font-size:22px;
+    color:var(--ink-soft);
+  }
+  .prow.gold .prank{color:var(--red);}
+  .pname{font-weight:600;font-size:15px;}
+  .psub{font-size:13px;color:var(--ink-soft);font-weight:400;}
+  .pamt{
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:20px;
+  }
+
+  /* ---------- rules ---------- */
+  .rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+  @media(max-width:720px){.rules-grid{grid-template-columns:1fr;}}
+  .rules-list{list-style:none;margin:0;padding:0;}
+  .rules-list li{
+    padding:14px 0;border-top:1px solid var(--paper-2);
+    font-size:14.5px;line-height:1.5;color:var(--ink-soft);
+    display:flex;gap:12px;
+  }
+  .rules-list li:first-child{border-top:none;}
+  .rules-list b{color:var(--ink);font-weight:600;}
+  .rmark{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--red);
+    flex-shrink:0;padding-top:2px;
+  }
+
+  /* ---------- signup form ---------- */
+  #signup{background:var(--paper-2);}
+  .form-card{
+    background:var(--paper-3);border:1.5px solid var(--ink);border-radius:var(--radius);
+    padding:40px;max-width:640px;margin:0 auto;
+  }
+  .form-row{margin-bottom:20px;}
+  .form-row label{
+    display:block;font-family:'IBM Plex Mono',monospace;font-size:12px;
+    text-transform:uppercase;letter-spacing:0.08em;color:var(--ink-soft);
+    margin-bottom:8px;
+  }
+  .form-row input, .form-row select{
+    width:100%;padding:13px 14px;border:1.5px solid var(--line);
+    border-radius:var(--radius);font-family:'Inter',sans-serif;font-size:15px;
+    background:#fff;color:var(--ink);
+  }
+  .form-row input:focus, .form-row select:focus{
+    outline:none;border-color:var(--red);
+  }
+  .tier-toggle{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .tier-opt{
+    border:1.5px solid var(--line);border-radius:var(--radius);
+    padding:16px;cursor:pointer;position:relative;
+  }
+  .tier-opt input{position:absolute;opacity:0;width:0;height:0;}
+  .tier-opt .t-name{font-weight:600;font-size:14.5px;margin-bottom:4px;}
+  .tier-opt .t-price{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);}
+  .tier-opt.checked{border-color:var(--red);background:rgba(223,74,52,0.06);}
+  .tier-opt.checked .t-name{color:var(--red-dark);}
+  .check-row{display:flex;gap:10px;align-items:flex-start;margin:24px 0;}
+  .check-row input{margin-top:3px;}
+  .check-row label{font-size:13.5px;color:var(--ink-soft);line-height:1.5;font-family:'Inter',sans-serif;text-transform:none;letter-spacing:0;}
+  .submit-btn{
+    width:100%;background:var(--red);color:#fff;border:none;
+    padding:17px;font-weight:700;font-size:15px;text-transform:uppercase;
+    letter-spacing:0.03em;border-radius:var(--radius);cursor:pointer;
+  }
+  .submit-btn:hover{background:var(--red-dark);}
+  .form-note{font-size:12.5px;color:var(--ink-soft);text-align:center;margin-top:14px;}
+  .confirm{
+    display:none;text-align:center;padding:40px 20px;
+  }
+  .confirm.show{display:block;}
+  .confirm-mark{
+    width:56px;height:56px;border-radius:50%;background:var(--red);
+    color:#fff;display:flex;align-items:center;justify-content:center;
+    font-family:'Oswald',sans-serif;font-size:26px;margin:0 auto 18px;
+  }
+  .confirm h3{font-family:'Oswald',sans-serif;text-transform:uppercase;font-size:24px;margin:0 0 10px;}
+  .confirm p{color:var(--ink-soft);font-size:14.5px;max-width:380px;margin:0 auto;}
+
+  footer{padding:36px 0 60px;border-top:1px solid var(--line);}
+  .foot-text{font-size:12.5px;color:var(--ink-soft);line-height:1.6;max-width:640px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <div class="brand"><span class="dot"></span>8-Week Challenge</div>
+    <nav class="nav-links">
+      <a href="#pricing">Pricing</a>
+      <a href="#prizes">Prizes</a>
+      <a href="#rules">Rules</a>
+    </nav>
+    <a href="#signup" class="nav-cta">Enter Now</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero" style="border-top:none;">
+    <div class="eyebrow">Community Challenge · 8 Weeks · No Gym Required</div>
+    <h1>Show up.<br>Log it.<br><em>Win the pool.</em></h1>
+    <p class="hero-sub">An 8-week accountability challenge for our community. Fully remote by default, join from anywhere, check in weekly, and compete for a $2,000 prize pool.</p>
+    <div class="hero-actions">
+      <a href="#signup" class="btn-primary">Claim Your Spot</a>
+      <a href="#rules" class="btn-ghost">Read the rules</a>
+    </div>
+
+    <div class="ticket">
+      <div class="ticket-main">
+        <div class="ticket-num">Entry No. 001, Cohort Opens Soon</div>
+        <div class="ticket-title">Admit One, 8 Week Cycle</div>
+        <div class="ticket-desc">Winner determined by % of body weight lost, Week 0 to Week 8. Weekly check-ins required to stay eligible.</div>
+      </div>
+      <div class="perf"></div>
+      <div class="ticket-stub">
+        <div class="stub-amt">$2,000</div>
+        <div class="stub-label">Prize Pool</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how">
+    <div class="sec-head">
+      <div class="sec-eyebrow">The Rhythm</div>
+      <h2>Your week, every week</h2>
+    </div>
+    <div class="rhythm">
+      <div class="rhythm-row">
+        <div class="rhythm-day">Monday</div>
+        <div class="rhythm-text"><strong>Leaderboard drops</strong>&nbsp;- see where you stand and get the week's focus.</div>
+      </div>
+      <div class="rhythm-row">
+        <div class="rhythm-day">Wed</div>
+        <div class="rhythm-text"><strong>Community check-in</strong>&nbsp;- log a workout, post a win, keep momentum.</div>
+      </div>
+      <div class="rhythm-row">
+        <div class="rhythm-day">Sunday</div>
+        <div class="rhythm-text"><strong>Check-in deadline</strong>&nbsp;- submit your weekly form before it closes.</div>
+      </div>
+      <div class="rhythm-row">
+        <div class="rhythm-day">Wk 0 / 4 / 8</div>
+        <div class="rhythm-text"><strong>Official weigh-in</strong>&nbsp;- photo-verified, same scale, same time of day.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Choose Your Format</div>
+      <h2>Community or coached</h2>
+    </div>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-name">Standard</div>
+        <div class="price-num">$35<span>/ week</span></div>
+        <div class="price-total">$280 total · 8 weeks</div>
+        <ul class="price-list">
+          <li>Private community group access</li>
+          <li>Weekly check-in form & leaderboard</li>
+          <li>Full prize pool eligibility</li>
+          <li>Fully remote, join from anywhere</li>
+        </ul>
+        <button class="price-select" onclick="selectTier('standard')">Select Standard</button>
+      </div>
+      <div class="price-card featured">
+        <div class="price-tag">+ Coaching</div>
+        <div class="price-name">Face-to-Face</div>
+        <div class="price-num">$99<span>/ week</span></div>
+        <div class="price-total">$792 total · 8 weeks</div>
+        <ul class="price-list">
+          <li>Everything in Standard</li>
+          <li>Weekly in-person coaching session</li>
+          <li>Live form checks & guided workouts</li>
+          <li>Priority plan adjustments</li>
+        </ul>
+        <button class="price-select" onclick="selectTier('f2f')">Select F2F</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRIZES -->
+  <section id="prizes">
+    <div class="sec-head">
+      <div class="sec-eyebrow">On The Line</div>
+      <h2>$2,000 pool, split three ways</h2>
+    </div>
+    <div class="podium">
+      <div class="prow gold">
+        <div class="prank">1st</div>
+        <div><div class="pname">Top % body weight lost</div><div class="psub">50% of pool</div></div>
+        <div class="pamt">$1,000</div>
+      </div>
+      <div class="prow">
+        <div class="prank">2nd</div>
+        <div><div class="pname">Runner-up</div><div class="psub">30% of pool</div></div>
+        <div class="pamt">$600</div>
+      </div>
+      <div class="prow">
+        <div class="prank">3rd</div>
+        <div><div class="pname">Third place</div><div class="psub">20% of pool</div></div>
+        <div class="pamt">$400</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RULES -->
+  <section id="rules">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Fine Print, Made Clear</div>
+      <h2>What it takes to qualify</h2>
+    </div>
+    <div class="rules-grid">
+      <ul class="rules-list">
+        <li><span class="rmark">01</span><span><b>Complete 6 of 8 weekly check-ins</b> to remain eligible for prize money.</span></li>
+        <li><span class="rmark">02</span><span><b>Submit Week 0, 4, and 8 weigh-ins</b> with a timestamped photo for verification.</span></li>
+        <li><span class="rmark">03</span><span><b>Scoring is by % of body weight lost</b>, not raw pounds, fair across all starting points.</span></li>
+      </ul>
+      <ul class="rules-list">
+        <li><span class="rmark">04</span><span><b>Losing more than ~3% in one week</b> flags a safety check-in, not a win.</span></li>
+        <li><span class="rmark">05</span><span><b>18+</b> to enter, or 16+ with signed parental consent.</span></li>
+        <li><span class="rmark">06</span><span><b>A signed waiver</b> is required before your Week 0 weigh-in counts.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SIGNUP -->
+  <section id="signup">
+    <div class="sec-head" style="text-align:center;">
+      <div class="sec-eyebrow">Last Step</div>
+      <h2>Reserve your entry</h2>
+    </div>
+
+    <form class="form-card" id="signupForm" onsubmit="handleSubmit(event)">
+      <div class="form-row">
+        <label for="fname">Full name</label>
+        <input type="text" id="fname" required placeholder="Jordan Riley">
+      </div>
+      <div class="form-row">
+        <label for="femail">Email</label>
+        <input type="email" id="femail" required placeholder="you@email.com">
+      </div>
+      <div class="form-row">
+        <label for="fphone">Phone</label>
+        <input type="tel" id="fphone" required placeholder="(555) 555-5555">
+      </div>
+
+      <div class="form-row">
+        <label>Format</label>
+        <div class="tier-toggle">
+          <label class="tier-opt checked" id="opt-standard">
+            <input type="radio" name="tier" value="standard" checked onchange="updateTier(this)">
+            <div class="t-name">Standard</div>
+            <div class="t-price">$35/week · $280 total</div>
+          </label>
+          <label class="tier-opt" id="opt-f2f">
+            <input type="radio" name="tier" value="f2f" onchange="updateTier(this)">
+            <div class="t-name">Face-to-Face</div>
+            <div class="t-price">$99/week · $792 total</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="fwaiver" required>
+        <label for="fwaiver">I confirm I have no medical condition that makes this program unsafe (or I've been cleared by a physician), and I agree to the challenge rules and waiver.</label>
+      </div>
+
+      <button type="submit" class="submit-btn">Reserve My Spot, <span id="btnPrice">$280</span></button>
+      <div class="form-note">Payment is collected separately after registration. No spot is confirmed until payment is received.</div>
+
+      <div class="confirm" id="confirmBox">
+        <div class="confirm-mark">✓</div>
+        <h3>You're on the list</h3>
+        <p>We'll follow up by email with your payment link and Week 0 weigh-in instructions before the cohort opens.</p>
+      </div>
+    </form>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="foot-text">By entering, you agree to the full challenge rules, weigh-in verification process, and waiver on file with the program organizer. This challenge is a wellness program, not a medical treatment, consult a physician before beginning any weight-loss program. Prize eligibility requires completing at least 6 of 8 weekly check-ins and both official weigh-ins.</p>
+  </div>
+</footer>
+
+<script>
+  function updateTier(input){
+    document.getElementById('opt-standard').classList.toggle('checked', input.value === 'standard');
+    document.getElementById('opt-f2f').classList.toggle('checked', input.value === 'f2f');
+    document.getElementById('btnPrice').textContent = input.value === 'f2f' ? '$792' : '$280';
+  }
+  function selectTier(tier){
+    const radio = document.querySelector(`input[name="tier"][value="${tier}"]`);
+    radio.checked = true;
+    updateTier(radio);
+    document.getElementById('signup').scrollIntoView({behavior:'smooth'});
+  }
+  function handleSubmit(e){
+    e.preventDefault();
+    document.getElementById('signupForm').querySelectorAll('input,button.submit-btn').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.form-row, .check-row').forEach(el => el.style.display = 'none');
+    document.querySelector('.form-note').style.display = 'none';
+    document.getElementById('confirmBox').classList.add('show');
+  }
+</script>
+
+</body>
+</html>

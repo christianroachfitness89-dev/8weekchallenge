@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Week Challenge · Log In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand"><span class="dot"></span>8-Week Challenge</a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="leaderboard.html">Leaderboard</a>
+    </nav>
+    <a href="signup.html" class="nav-cta">Sign Up</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section style="padding:64px 0;max-width:560px;margin:0 auto;">
+    <div class="sec-head" style="text-align:center;">
+      <div class="sec-eyebrow">Entrant Portal</div>
+      <h2>Log in</h2>
+    </div>
+
+    <form class="form-card" id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-row">
+        <label for="lemail">Email</label>
+        <input type="email" id="lemail" required placeholder="you@email.com">
+      </div>
+      <div class="form-row">
+        <label for="lpassword">Password</label>
+        <input type="password" id="lpassword" required placeholder="Your password">
+      </div>
+
+      <button type="submit" class="submit-btn" id="loginBtn">Log In</button>
+      <div class="msg" id="loginMsg"></div>
+    </form>
+
+    <p class="text-center mt-2" style="font-size:14px;">
+      Don't have an account? <a href="signup.html" style="color:var(--red-dark);font-weight:600;">Sign up here</a>.
+    </p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="foot-text">By entering, you agree to the full challenge rules, weigh-in verification process, and waiver on file with the program organiser.</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  function getParam(name){
+    return new URLSearchParams(window.location.search).get(name);
+  }
+
+  async function handleLogin(e){
+    e.preventDefault();
+    const btn = document.getElementById('loginBtn');
+    const msg = document.getElementById('loginMsg');
+    msg.className = 'msg';
+
+    const email = document.getElementById('lemail').value.trim();
+    const password = document.getElementById('lpassword').value;
+
+    btn.disabled = true;
+    btn.textContent = 'Logging in...';
+
+    try{
+      await window.auth.signIn(email, password);
+
+      // Determine redirect target.
+      const redirect = getParam('redirect') || 'dashboard.html';
+      window.location.href = redirect;
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Login failed. Check your email and password.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Log In';
+    }
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Week Challenge · Live Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand"><span class="dot"></span>8-Week Challenge</a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="login.html">Log In</a>
+    </nav>
+    <a href="signup.html" class="nav-cta">Enter Now</a>
+  </div>
+</header>
+
+<div class="wrap-narrow">
+
+  <section style="padding:28px 0;">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Live Rankings</div>
+      <h1 style="font-size:32px;">Leaderboard</h1>
+      <p class="sub">Ranked by percent of body weight lost from Week 0. Refreshes automatically.</p>
+    </div>
+
+    <div class="lb-head">
+      <span class="lb-updated" id="lbUpdated">Not loaded yet</span>
+      <button class="refresh-btn" onclick="window.leaderboard.load('lbContent','lbUpdated')">Refresh</button>
+    </div>
+
+    <div id="lbContent">
+      <div class="loading">Loading leaderboard...</div>
+    </div>
+
+    <p class="note">Only rank, first name + initial, and percent progress are shown. Raw weights stay private. You must complete 6 of 8 weekly check-ins and submit official Week 0 and Week 8 weigh-ins to be prize-eligible.</p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="foot-text">By entering, you agree to the full challenge rules, weigh-in verification process, and waiver on file with the program organiser.</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/leaderboard.js"></script>
+<script>
+  // Load immediately and then refresh every 20 seconds while the page is open.
+  window.leaderboard.load('lbContent', 'lbUpdated');
+  setInterval(function(){
+    window.leaderboard.load('lbContent', 'lbUpdated');
+  }, 20000);
+</script>
+
+</body>
+</html>

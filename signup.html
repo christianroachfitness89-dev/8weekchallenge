@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Week Challenge · Sign Up</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand"><span class="dot"></span>8-Week Challenge</a>
+    <nav class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="leaderboard.html">Leaderboard</a>
+    </nav>
+    <a href="login.html" class="nav-cta">Log In</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section id="signup" style="padding:48px 0 64px;">
+    <div class="sec-head" style="text-align:center;">
+      <div class="sec-eyebrow">Reserve Your Entry</div>
+      <h2>Create your account &amp; pay</h2>
+      <p class="mb-3">All weights are tracked in kilograms. Payment is collected securely through Stripe.</p>
+    </div>
+
+    <form class="form-card" id="signupForm" onsubmit="handleSubmit(event)">
+      <div class="two-col">
+        <div class="form-row">
+          <label for="fname">Full name</label>
+          <input type="text" id="fname" required placeholder="Jordan Riley">
+        </div>
+        <div class="form-row">
+          <label for="fphone">Phone</label>
+          <input type="tel" id="fphone" required placeholder="(555) 555-5555">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label for="femail">Email</label>
+        <input type="email" id="femail" required placeholder="you@email.com">
+      </div>
+
+      <div class="two-col">
+        <div class="form-row">
+          <label for="fpassword">Password</label>
+          <input type="password" id="fpassword" required minlength="8" placeholder="At least 8 characters">
+        </div>
+        <div class="form-row">
+          <label for="fpassword2">Confirm password</label>
+          <input type="password" id="fpassword2" required minlength="8" placeholder="Repeat password">
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="form-row">
+          <label for="fweight">Starting weight (kg)</label>
+          <input type="number" id="fweight" required min="30" max="300" step="0.1" placeholder="82.5">
+          <p class="hint">Your official Week 0 baseline in kilograms.</p>
+        </div>
+        <div class="form-row">
+          <label for="fage">Age</label>
+          <input type="number" id="fage" required min="16" max="99" placeholder="28">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>Format</label>
+        <div class="tier-toggle">
+          <label class="tier-opt checked" id="opt-standard">
+            <input type="radio" name="tier" value="standard" checked onchange="updateTier(this)">
+            <div class="t-name">Standard</div>
+            <div class="t-price">$35/week · $280 total</div>
+          </label>
+          <label class="tier-opt" id="opt-f2f">
+            <input type="radio" name="tier" value="f2f" onchange="updateTier(this)">
+            <div class="t-name">Face-to-Face</div>
+            <div class="t-price">$99/week · $792 total</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="check-row">
+        <input type="checkbox" id="fwaiver" required>
+        <label for="fwaiver">I confirm I am 18+ (or 16+ with guardian consent), have no medical condition that makes this program unsafe (or I've been cleared by a physician), and I agree to the challenge rules and waiver.</label>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submitBtn">Create Account &amp; Pay <span id="btnPrice">$280</span></button>
+      <div class="form-note">You'll be redirected to Stripe to complete payment. Your spot is reserved once payment is confirmed.</div>
+      <div class="msg" id="formMsg"></div>
+    </form>
+
+    <div class="confirm" id="confirmBox">
+      <div class="confirm-mark">✓</div>
+      <h3>Account created</h3>
+      <p id="confirmText">Redirecting you to Stripe to complete payment...</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="foot-text">By entering, you agree to the full challenge rules, weigh-in verification process, and waiver on file with the program organiser. This challenge is a wellness program, not a medical treatment — consult a physician before beginning any weight-loss program.</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  // Replace these with your own Stripe Payment Link URLs (see SETUP.md).
+  const STRIPE_LINKS = {
+    standard: 'https://buy.stripe.com/28E28s92p1Zy8my6oY5os0x',
+    f2f: 'https://buy.stripe.com/dRmeVebax33C1Ya5kU5os0B'
+  };
+
+  function updateTier(input){
+    document.getElementById('opt-standard').classList.toggle('checked', input.value === 'standard');
+    document.getElementById('opt-f2f').classList.toggle('checked', input.value === 'f2f');
+    document.getElementById('btnPrice').textContent = input.value === 'f2f' ? '$792' : '$280';
+  }
+
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  function getParam(name){
+    const params = new URLSearchParams(window.location.search);
+    return params.get(name);
+  }
+
+  // Pre-select tier from URL if present.
+  (function(){
+    const tier = getParam('tier');
+    if(tier === 'f2f'){
+      const radio = document.querySelector('input[name="tier"][value="f2f"]');
+      if(radio){
+        radio.checked = true;
+        updateTier(radio);
+      }
+    }
+  })();
+
+  async function handleSubmit(e){
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('formMsg');
+    msg.className = 'msg';
+
+    const name = document.getElementById('fname').value.trim();
+    const email = document.getElementById('femail').value.trim();
+    const phone = document.getElementById('fphone').value.trim();
+    const password = document.getElementById('fpassword').value;
+    const password2 = document.getElementById('fpassword2').value;
+    const weight = parseFloat(document.getElementById('fweight').value);
+    const age = parseInt(document.getElementById('fage').value, 10);
+    const tier = document.querySelector('input[name="tier"]:checked').value;
+
+    if(password !== password2){
+      showMsg(msg, 'Passwords do not match.', 'error');
+      return;
+    }
+
+    if(weight < 30 || weight > 300 || isNaN(weight)){
+      showMsg(msg, 'Please enter a realistic starting weight in kg (30–300).', 'error');
+      return;
+    }
+
+    if(age < 16 || isNaN(age)){
+      showMsg(msg, 'You must be at least 16 years old to enter.', 'error');
+      return;
+    }
+
+    if(STRIPE_LINKS.standard.includes('YOUR_') || STRIPE_LINKS.f2f.includes('YOUR_')){
+      showMsg(msg, 'Stripe payment links are not configured yet. Please contact the organiser.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Creating account...';
+
+    try{
+      const { user } = await window.auth.signUp(email, password, {
+        full_name: name,
+        phone: phone,
+        tier: tier,
+        starting_weight_kg: weight,
+        age: age
+      });
+
+      if(!user){
+        showMsg(msg, 'Sign-up succeeded but no user was returned. Please try logging in.', 'info');
+        btn.disabled = false;
+        btn.textContent = 'Create Account &amp; Pay $' + (tier === 'f2f' ? '792' : '280');
+        return;
+      }
+
+      // Show confirmation and redirect to Stripe.
+      document.getElementById('signupForm').style.display = 'none';
+      document.getElementById('confirmBox').classList.add('show');
+
+      const stripeUrl = new URL(STRIPE_LINKS[tier]);
+      stripeUrl.searchParams.set('client_reference_id', user.id);
+      stripeUrl.searchParams.set('prefilled_email', email);
+
+      setTimeout(function(){
+        window.location.href = stripeUrl.toString();
+      }, 1200);
+
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Something went wrong creating your account. Please try again.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Create Account &amp; Pay $' + (tier === 'f2f' ? '792' : '280');
+    }
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Week Challenge · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+<style>
+  .admin-bar{
+    display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center;
+    margin-bottom:20px;
+  }
+  .admin-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .admin-btn{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;
+    background:var(--paper-3);border:1.5px solid var(--ink);border-radius:var(--radius);
+    padding:8px 14px;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;
+  }
+  .admin-btn:hover{background:var(--ink);color:var(--paper-3);}
+
+  .detail-panel{
+    display:none;
+    margin-top:12px;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px;
+  }
+  .detail-panel.show{display:block;}
+  .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:16px;}
+  .detail-item .di-label{font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;color:var(--ink-soft);}
+  .detail-item .di-value{font-size:15px;font-weight:600;}
+
+  .photo-thumb{
+    max-width:160px;border:1px solid var(--line);border-radius:var(--radius);margin-right:10px;margin-bottom:10px;
+  }
+
+  .filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+  .filter-row input,.filter-row select{
+    padding:8px 12px;border:1.5px solid var(--line);border-radius:var(--radius);
+    font-family:'Inter',sans-serif;font-size:14px;background:#fff;
+  }
+
+  .flag{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;
+    padding:3px 8px;border-radius:var(--radius);font-weight:600;
+  }
+  .flag-warning{background:rgba(223,74,52,0.12);color:var(--red-dark);}
+  .flag-safe{background:rgba(60,120,60,0.12);color:#2c5c2c;}
+
+  .checkin-history-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;}
+  .checkin-history-table th,.checkin-history-table td{
+    text-align:left;padding:8px;border-bottom:1px solid var(--line);
+  }
+  .checkin-history-table th{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;color:var(--ink-soft);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand"><span class="dot"></span>8-Week Challenge</a>
+    <nav class="nav-links">
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="dashboard.html">Dashboard</a>
+    </nav>
+    <div class="nav-user">
+      <span id="adminName">Admin</span>
+      <button onclick="handleSignOut()">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section style="padding:36px 0;">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Organiser Panel</div>
+      <h2>Entrant Management</h2>
+    </div>
+
+    <div class="admin-bar">
+      <div class="filter-row">
+        <input type="text" id="searchInput" placeholder="Search name or email..." oninput="renderTable()">
+        <select id="filterPaid" onchange="renderTable()">
+          <option value="all">All payment statuses</option>
+          <option value="unpaid">Unpaid only</option>
+          <option value="paid">Paid only</option>
+        </select>
+      </div>
+      <div class="admin-actions">
+        <button class="admin-btn" onclick="loadData()">Refresh</button>
+        <button class="admin-btn" onclick="exportCsv()">Export CSV</button>
+      </div>
+    </div>
+
+    <div id="adminContent">
+      <div class="loading">Loading entrants...</div>
+    </div>
+
+    <p class="note">Use the Stripe Dashboard (filtered by client_reference_id) to confirm payments, then mark entrants paid here to unlock their dashboard. Safety flags appear for any entrant losing more than ~3% body weight in a single week.</p>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="foot-text">Admin panel. Only authorised organisers should access this page. Entrant data is private and must not be shared outside the challenge team.</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  const client = window.sb;
+  let allProfiles = [];
+  let allCheckins = [];
+
+  async function init(){
+    const { user, profile } = await window.auth.requireAdmin();
+    if(!user) return;
+    document.getElementById('adminName').textContent = profile.full_name || 'Admin';
+    await loadData();
+  }
+
+  async function loadData(){
+    const container = document.getElementById('adminContent');
+    container.innerHTML = '<div class="loading">Loading entrants...</div>';
+
+    try{
+      const [profilesRes, checkinsRes] = await Promise.all([
+        client.from('profiles').select('*').order('created_at', { ascending: false }),
+        client.from('checkins').select('*').order('week', { ascending: true })
+      ]);
+
+      if(profilesRes.error) throw profilesRes.error;
+      if(checkinsRes.error) throw checkinsRes.error;
+
+      allProfiles = profilesRes.data || [];
+      allCheckins = checkinsRes.data || [];
+
+      renderTable();
+    } catch(err){
+      console.error(err);
+      document.getElementById('adminContent').innerHTML = '<div class="empty">Could not load entrants. ' + escapeHtml(err.message) + '</div>';
+    }
+  }
+
+  function getCheckinsForUser(userId){
+    return allCheckins.filter(function(c){ return c.user_id === userId; });
+  }
+
+  function computeMetrics(checkins){
+    const map = {};
+    checkins.forEach(function(c){ map[c.week] = c; });
+    const baseline = map[0]?.weight_kg || null;
+    const latest = checkins.length ? checkins[checkins.length - 1] : null;
+    let pctLost = 0;
+    if(baseline && latest){
+      pctLost = ((baseline - latest.weight_kg) / baseline) * 100;
+    }
+    const weeksLogged = checkins.filter(function(c){ return c.week > 0; }).length;
+    const verified = checkins.filter(function(c){ return [0,4,8].includes(c.week) && c.photo_path; }).length;
+
+    // Safety flag: >3% loss in one week.
+    let safetyFlag = false;
+    for(let i = 1; i <= 8; i++){
+      if(map[i] && map[i-1] && map[i-1].weight_kg > 0){
+        const wkPct = ((map[i-1].weight_kg - map[i].weight_kg) / map[i-1].weight_kg) * 100;
+        if(wkPct > 3) safetyFlag = true;
+      }
+    }
+
+    return { baseline, latest, pctLost, weeksLogged, verified, safetyFlag, map };
+  }
+
+  function renderTable(){
+    const container = document.getElementById('adminContent');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const paidFilter = document.getElementById('filterPaid').value;
+
+    const filtered = allProfiles.filter(function(p){
+      const matchesSearch = !search ||
+        (p.full_name || '').toLowerCase().includes(search) ||
+        (p.email || '').toLowerCase().includes(search);
+      const matchesPaid = paidFilter === 'all' ||
+        (paidFilter === 'paid' && p.paid) ||
+        (paidFilter === 'unpaid' && !p.paid);
+      return matchesSearch && matchesPaid;
+    });
+
+    if(!filtered.length){
+      container.innerHTML = '<div class="empty">No entrants match your filters.</div>';
+      return;
+    }
+
+    let html = '<table class="data-table">' +
+      '<thead><tr>' +
+        '<th>Name</th>' +
+        '<th>Tier</th>' +
+        '<th>Paid</th>' +
+        '<th>Start (kg)</th>' +
+        '<th>Latest (kg)</th>' +
+        '<th>% Lost</th>' +
+        '<th>Weeks</th>' +
+        '<th>Verified</th>' +
+        '<th>Flags</th>' +
+        '<th>Actions</th>' +
+      '</tr></thead><tbody>';
+
+    filtered.forEach(function(p){
+      const checkins = getCheckinsForUser(p.id);
+      const m = computeMetrics(checkins);
+      const pctText = m.baseline ? (m.pctLost >= 0 ? '-' : '+') + Math.abs(m.pctLost).toFixed(1) + '%' : '—';
+
+      html += '<tr data-id="' + escapeHtml(p.id) + '">' +
+        '<td>' + escapeHtml(p.full_name || '—') + '<br><span style="font-size:12px;color:var(--ink-soft);">' + escapeHtml(p.email || '') + '</span></td>' +
+        '<td>' + (p.tier === 'f2f' ? 'F2F' : 'Standard') + '</td>' +
+        '<td><span class="tag ' + (p.paid ? 'tag-paid' : 'tag-unpaid') + '">' + (p.paid ? 'Paid' : 'Unpaid') + '</span></td>' +
+        '<td>' + (m.baseline ? m.baseline.toFixed(1) : '—') + '</td>' +
+        '<td>' + (m.latest ? m.latest.weight_kg.toFixed(1) : '—') + '</td>' +
+        '<td style="font-weight:600;">' + pctText + '</td>' +
+        '<td>' + m.weeksLogged + '/8</td>' +
+        '<td>' + m.verified + '/3</td>' +
+        '<td>' + (m.safetyFlag ? '<span class="flag flag-warning">⚠ >3%/wk</span>' : '<span class="flag flag-safe">OK</span>') + '</td>' +
+        '<td>' +
+          '<button class="admin-btn" onclick="togglePaid(\'' + p.id + '\', ' + !p.paid + ')">' + (p.paid ? 'Mark unpaid' : 'Mark paid') + '</button> ' +
+          '<button class="admin-btn" onclick="toggleDetails(\'' + p.id + '\')">View</button>' +
+        '</td>' +
+      '</tr>' +
+      '<tr id="detail-' + p.id + '" style="display:none;">' +
+        '<td colspan="10" style="padding:0;border:none;">' +
+          '<div class="detail-panel" id="panel-' + p.id + '" data-loaded="false"></div>' +
+        '</td>' +
+      '</tr>';
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+  }
+
+  async function togglePaid(userId, paidStatus){
+    try{
+      const { error } = await client.from('profiles').update({ paid: paidStatus }).eq('id', userId);
+      if(error) throw error;
+      await loadData();
+    } catch(err){
+      alert('Could not update payment status: ' + err.message);
+    }
+  }
+
+  async function toggleDetails(userId){
+    const panel = document.getElementById('panel-' + userId);
+    const row = document.getElementById('detail-' + userId);
+    const isOpen = panel.classList.contains('show');
+
+    if(!isOpen){
+      row.style.display = 'table-row';
+      panel.classList.add('show');
+      if(panel.dataset.loaded !== 'true'){
+        await renderDetails(userId, panel);
+        panel.dataset.loaded = 'true';
+      }
+    } else {
+      panel.classList.remove('show');
+      row.style.display = 'none';
+    }
+  }
+
+  async function renderDetails(userId, panel){
+    const profile = allProfiles.find(function(p){ return p.id === userId; });
+    const checkins = getCheckinsForUser(userId);
+    const m = computeMetrics(checkins);
+
+    let html = '<div class="detail-grid">' +
+      '<div class="detail-item"><div class="di-label">Email</div><div class="di-value">' + escapeHtml(profile.email || '—') + '</div></div>' +
+      '<div class="detail-item"><div class="di-label">Phone</div><div class="di-value">' + escapeHtml(profile.phone || '—') + '</div></div>' +
+      '<div class="detail-item"><div class="di-label">Tier</div><div class="di-value">' + (profile.tier === 'f2f' ? 'Face-to-Face' : 'Standard') + '</div></div>' +
+      '<div class="detail-item"><div class="di-label">Joined</div><div class="di-value">' + (profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—') + '</div></div>' +
+      '<div class="detail-item"><div class="di-label">Baseline (kg)</div><div class="di-value">' + (m.baseline ? m.baseline.toFixed(1) : '—') + '</div></div>' +
+      '<div class="detail-item"><div class="di-label">Latest (kg)</div><div class="di-value">' + (m.latest ? m.latest.weight_kg.toFixed(1) : '—') + '</div></div>' +
+    '</div>';
+
+    if(checkins.length){
+      html += '<table class="checkin-history-table">' +
+        '<thead><tr><th>Week</th><th>Weight (kg)</th><th>Change/wk</th><th>Workouts</th><th>Energy</th><th>Adherence</th><th>Photo</th><th>Notes</th></tr></thead><tbody>';
+
+      for(let i = 0; i < checkins.length; i++){
+        const c = checkins[i];
+        let change = '—';
+        if(i > 0){
+          const prev = checkins[i-1];
+          const diff = prev.weight_kg - c.weight_kg;
+          const pct = (diff / prev.weight_kg) * 100;
+          const sign = diff >= 0 ? '-' : '+';
+          change = sign + Math.abs(diff).toFixed(1) + ' kg (' + sign + Math.abs(pct).toFixed(1) + '%)';
+        }
+        let photoCell = '—';
+        if(c.photo_path){
+          photoCell = '<a href="#" class="photo-link" data-path="' + escapeHtml(c.photo_path) + '" onclick="downloadPhoto(event, this)">Download</a>';
+        }
+        html += '<tr>' +
+          '<td>' + c.week + '</td>' +
+          '<td>' + c.weight_kg.toFixed(1) + '</td>' +
+          '<td>' + change + '</td>' +
+          '<td>' + (c.workouts_completed || 0) + '</td>' +
+          '<td>' + (c.energy_rating || '—') + '</td>' +
+          '<td>' + (c.adherence_rating || '—') + '</td>' +
+          '<td>' + photoCell + '</td>' +
+          '<td>' + escapeHtml(c.notes || '') + '</td>' +
+        '</tr>';
+      }
+      html += '</tbody></table>';
+    } else {
+      html += '<p style="color:var(--ink-soft);">No check-ins submitted yet.</p>';
+    }
+
+    panel.innerHTML = html;
+  }
+
+  async function downloadPhoto(e, link){
+    e.preventDefault();
+    const path = link.dataset.path;
+    try{
+      const { data, error } = await client.storage.from('weighin-photos').createSignedUrl(path, 300);
+      if(error) throw error;
+      window.open(data.signedUrl, '_blank');
+    } catch(err){
+      alert('Could not load photo: ' + err.message);
+    }
+  }
+
+  function exportCsv(){
+    const rows = [];
+    rows.push(['Name','Email','Phone','Age','Tier','Paid','Starting kg','Latest kg','% Lost','Weeks Logged','Verified Weigh-ins','Safety Flag']);
+
+    allProfiles.forEach(function(p){
+      const checkins = getCheckinsForUser(p.id);
+      const m = computeMetrics(checkins);
+      const pctText = m.baseline ? m.pctLost.toFixed(2) : '';
+      rows.push([
+        p.full_name || '',
+        p.email || '',
+        p.phone || '',
+        p.age || '',
+        p.tier || '',
+        p.paid ? 'Yes' : 'No',
+        m.baseline ? m.baseline.toFixed(1) : '',
+        m.latest ? m.latest.weight_kg.toFixed(1) : '',
+        pctText,
+        m.weeksLogged,
+        m.verified,
+        m.safetyFlag ? 'Yes' : 'No'
+      ]);
+    });
+
+    const csv = rows.map(function(r){ return r.map(escapeCsv).join(','); }).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '8week-challenge-entrants-' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function escapeCsv(val){
+    const str = String(val == null ? '' : val);
+    if(str.includes(',') || str.includes('"') || str.includes('\n')){
+      return '"' + str.replace(/"/g, '""') + '"';
+    }
+    return str;
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = String(str || '');
+    return d.innerHTML;
+  }
+
+  async function handleSignOut(){
+    await window.auth.signOut();
+    window.location.href = 'index.html';
+  }
+
+  init();
+</script>
+
+</body>
+</html>

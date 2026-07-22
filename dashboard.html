@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8-Week Challenge · Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a href="index.html" class="brand"><span class="dot"></span>8-Week Challenge</a>
+    <nav class="nav-links">
+      <a href="leaderboard.html">Leaderboard</a>
+      <a href="dashboard.html">Dashboard</a>
+    </nav>
+    <div class="nav-user">
+      <span id="userName"></span>
+      <button onclick="handleSignOut()">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section style="padding:36px 0;">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Entrant Dashboard</div>
+      <h2 id="pageTitle">Loading...</h2>
+    </div>
+
+    <!-- Payment pending notice -->
+    <div class="card hidden" id="paymentNotice" style="margin-bottom:24px;border-color:var(--yellow);">
+      <h3 style="font-size:20px;">Payment pending</h3>
+      <p>Your account is created, but your check-in dashboard will unlock once the organiser confirms your payment. If you already paid, please allow a few hours for activation.</p>
+      <a href="index.html" class="btn-ghost">Back to home</a>
+    </div>
+
+    <!-- Paid dashboard -->
+    <div id="dashboardContent" class="hidden">
+      <div class="dashboard-grid">
+
+        <!-- Left: check-in form -->
+        <div class="card">
+          <h3 style="font-size:22px;margin-bottom:20px;">Weekly Check-In</h3>
+          <form id="checkinForm" onsubmit="handleCheckin(event)">
+
+            <div class="two-col">
+              <div class="form-row">
+                <label for="ciWeek">Week</label>
+                <select id="ciWeek" required onchange="loadWeekData()">
+                  <option value="0">Week 0 (baseline)</option>
+                  <option value="1">Week 1</option>
+                  <option value="2">Week 2</option>
+                  <option value="3">Week 3</option>
+                  <option value="4">Week 4 (midpoint)</option>
+                  <option value="5">Week 5</option>
+                  <option value="6">Week 6</option>
+                  <option value="7">Week 7</option>
+                  <option value="8">Week 8 (final)</option>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <label for="ciWeight">Current weight (kg)</label>
+                <input type="number" id="ciWeight" required min="30" max="300" step="0.1" placeholder="80.2">
+                <p class="hint">Use the same scale, same time of day.</p>
+              </div>
+            </div>
+
+            <div class="form-row hidden" id="photoRow">
+              <label for="ciPhoto">Official weigh-in photo (Week 0, 4, or 8)</label>
+              <input type="file" id="ciPhoto" accept="image/*">
+              <p class="hint">Timestamped photo of you on the scale, numbers visible. Private — admin only.</p>
+            </div>
+
+            <div class="two-col">
+              <div class="form-row">
+                <label for="ciWorkouts">Workouts this week</label>
+                <input type="number" id="ciWorkouts" min="0" max="7" value="0">
+              </div>
+              <div class="form-row">
+                <label for="ciEnergy">Energy (1–5)</label>
+                <select id="ciEnergy">
+                  <option value="">—</option>
+                  <option value="1">1 — Exhausted</option>
+                  <option value="2">2 — Low</option>
+                  <option value="3">3 — Average</option>
+                  <option value="4">4 — Good</option>
+                  <option value="5">5 — Excellent</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="two-col">
+              <div class="form-row">
+                <label for="ciAdherence">Adherence (1–5)</label>
+                <select id="ciAdherence">
+                  <option value="">—</option>
+                  <option value="1">1 — Off plan</option>
+                  <option value="2">2 — Struggled</option>
+                  <option value="3">3 — Mostly on track</option>
+                  <option value="4">4 — On track</option>
+                  <option value="5">5 — Locked in</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="ciNotes">Notes (optional)</label>
+                <input type="text" id="ciNotes" placeholder="Wins, struggles, questions...">
+              </div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="ciSubmitBtn">Save Check-In</button>
+            <div class="msg" id="ciMsg"></div>
+          </form>
+        </div>
+
+        <!-- Right: progress stats -->
+        <div class="card-muted">
+          <h3 style="font-size:20px;margin-bottom:16px;">Your progress</h3>
+          <div style="display:grid;gap:12px;">
+            <div class="progress-stat">
+              <span class="stat-label">Starting weight</span>
+              <span class="stat-value" id="statStart">—</span>
+            </div>
+            <div class="progress-stat">
+              <span class="stat-label">Latest weight</span>
+              <span class="stat-value" id="statLatest">—</span>
+            </div>
+            <div class="progress-stat">
+              <span class="stat-label">Change</span>
+              <span class="stat-value positive" id="statChange">—</span>
+            </div>
+            <div class="progress-stat">
+              <span class="stat-label">Check-ins logged</span>
+              <span class="stat-value" id="statWeeks">—</span>
+            </div>
+          </div>
+          <p class="note">Remember: only rank and % progress appear on the public leaderboard. Your raw weight stays private.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p class="foot-text">By entering, you agree to the full challenge rules, weigh-in verification process, and waiver on file with the program organiser. Prize eligibility requires at least 6 of 8 weekly check-ins and official Week 0 and Week 8 weigh-ins.</p>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  const client = window.sb;
+  let currentUser = null;
+  let currentProfile = null;
+  let currentCheckins = {};
+
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  async function init(){
+    const user = await window.auth.requireAuth('dashboard.html');
+    if(!user) return;
+    currentUser = user;
+
+    const profile = await window.auth.getProfile(user.id);
+    if(!profile){
+      document.getElementById('pageTitle').textContent = 'Could not load your profile';
+      return;
+    }
+    currentProfile = profile;
+
+    document.getElementById('userName').textContent = profile.full_name || 'Entrant';
+    document.getElementById('pageTitle').textContent = 'Welcome, ' + (profile.full_name || 'Entrant');
+
+    if(!profile.paid){
+      document.getElementById('paymentNotice').classList.remove('hidden');
+      return;
+    }
+
+    document.getElementById('dashboardContent').classList.remove('hidden');
+
+    // Default week selection to current week if known, else Week 1.
+    const today = new Date();
+    const startDate = profile.created_at ? new Date(profile.created_at) : today;
+    const diffDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
+    const suggestedWeek = Math.min(8, Math.max(1, Math.floor(diffDays / 7)));
+    document.getElementById('ciWeek').value = suggestedWeek.toString();
+
+    await loadCheckins();
+    loadWeekData();
+  }
+
+  async function loadCheckins(){
+    const { data, error } = await client
+      .from('checkins')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('week', { ascending: true });
+
+    if(error){
+      console.error('loadCheckins error:', error);
+      return;
+    }
+
+    currentCheckins = {};
+    (data || []).forEach(function(c){ currentCheckins[c.week] = c; });
+    updateStats(data || []);
+  }
+
+  function updateStats(checkins){
+    const baseline = currentProfile.starting_weight_kg;
+    const week0 = currentCheckins[0];
+    const startWeight = week0 ? week0.weight_kg : baseline;
+
+    let latest = null;
+    checkins.forEach(function(c){
+      if(!latest || c.week > latest.week) latest = c;
+    });
+
+    document.getElementById('statStart').textContent = startWeight ? startWeight.toFixed(1) + ' kg' : '—';
+    document.getElementById('statLatest').textContent = latest ? latest.weight_kg.toFixed(1) + ' kg' : '—';
+
+    const weeksLogged = checkins.filter(function(c){ return c.week > 0; }).length;
+    document.getElementById('statWeeks').textContent = weeksLogged + ' / 8';
+
+    if(startWeight && latest){
+      const diff = startWeight - latest.weight_kg;
+      const pct = (diff / startWeight) * 100;
+      const sign = diff >= 0 ? '-' : '+';
+      document.getElementById('statChange').textContent = sign + Math.abs(diff).toFixed(1) + ' kg (' + sign + Math.abs(pct).toFixed(1) + '%)';
+    } else {
+      document.getElementById('statChange').textContent = '—';
+    }
+  }
+
+  function loadWeekData(){
+    const week = parseInt(document.getElementById('ciWeek').value, 10);
+    const existing = currentCheckins[week];
+    const photoRow = document.getElementById('photoRow');
+
+    if(week === 0 || week === 4 || week === 8){
+      photoRow.classList.remove('hidden');
+    } else {
+      photoRow.classList.add('hidden');
+    }
+
+    if(existing){
+      document.getElementById('ciWeight').value = existing.weight_kg;
+      document.getElementById('ciWorkouts').value = existing.workouts_completed || 0;
+      document.getElementById('ciEnergy').value = existing.energy_rating || '';
+      document.getElementById('ciAdherence').value = existing.adherence_rating || '';
+      document.getElementById('ciNotes').value = existing.notes || '';
+      document.getElementById('ciSubmitBtn').textContent = 'Update Check-In';
+    } else {
+      document.getElementById('ciWeight').value = '';
+      document.getElementById('ciWorkouts').value = '0';
+      document.getElementById('ciEnergy').value = '';
+      document.getElementById('ciAdherence').value = '';
+      document.getElementById('ciNotes').value = '';
+      document.getElementById('ciSubmitBtn').textContent = 'Save Check-In';
+    }
+  }
+
+  async function uploadPhoto(file, week){
+    if(!file) return null;
+    const ext = file.name.split('.').pop();
+    const safeExt = /^(jpg|jpeg|png|webp|heic)$/i.test(ext) ? ext.toLowerCase() : 'jpg';
+    const path = currentUser.id + '/week-' + week + '-' + Date.now() + '.' + safeExt;
+    const { data, error } = await client.storage
+      .from('weighin-photos')
+      .upload(path, file, { contentType: file.type });
+    if(error) throw error;
+    return data.path;
+  }
+
+  async function handleCheckin(e){
+    e.preventDefault();
+    const btn = document.getElementById('ciSubmitBtn');
+    const msg = document.getElementById('ciMsg');
+    msg.className = 'msg';
+
+    const week = parseInt(document.getElementById('ciWeek').value, 10);
+    const weight = parseFloat(document.getElementById('ciWeight').value);
+    const workouts = parseInt(document.getElementById('ciWorkouts').value, 10) || 0;
+    const energy = document.getElementById('ciEnergy').value ? parseInt(document.getElementById('ciEnergy').value, 10) : null;
+    const adherence = document.getElementById('ciAdherence').value ? parseInt(document.getElementById('ciAdherence').value, 10) : null;
+    const notes = document.getElementById('ciNotes').value.trim();
+    const photoFile = document.getElementById('ciPhoto').files[0];
+
+    if(isNaN(weight) || weight < 30 || weight > 300){
+      showMsg(msg, 'Please enter a realistic weight in kg (30–300).', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try{
+      let photoPath = currentCheckins[week]?.photo_path || null;
+
+      if(photoFile){
+        photoPath = await uploadPhoto(photoFile, week);
+      }
+
+      // Safety flag: >3% loss in a single week.
+      const prev = currentCheckins[week - 1];
+      if(prev && prev.weight_kg > 0){
+        const weeklyPct = ((prev.weight_kg - weight) / prev.weight_kg) * 100;
+        if(weeklyPct > 3){
+          console.warn('Safety flag: weekly loss >3%', weeklyPct);
+          // Still save, but could surface a warning. For now we let it save.
+        }
+      }
+
+      const payload = {
+        user_id: currentUser.id,
+        week: week,
+        weight_kg: weight,
+        workouts_completed: workouts,
+        energy_rating: energy,
+        adherence_rating: adherence,
+        notes: notes || null,
+        photo_path: photoPath
+      };
+
+      const { error } = await client.from('checkins').upsert(payload, { onConflict: 'user_id,week' });
+      if(error) throw error;
+
+      showMsg(msg, 'Check-in saved for Week ' + week + '.', 'success');
+      document.getElementById('ciPhoto').value = '';
+      await loadCheckins();
+      loadWeekData();
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Could not save check-in. Try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = currentCheckins[week] ? 'Update Check-In' : 'Save Check-In';
+    }
+  }
+
+  async function handleSignOut(){
+    await window.auth.signOut();
+    window.location.href = 'index.html';
+  }
+
+  // Kick off.
+  init();
+</script>
+
+</body>
+</html>
