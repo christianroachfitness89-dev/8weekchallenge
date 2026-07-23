@@ -8,7 +8,7 @@
  */
 
 const SUPABASE_URL = 'https://dcijyztwrrxmymbhfcwp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjaWp5enR3cnJ4bXltYmhmY3dwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDY4OTQzMCwiZXhwIjoyMTAwMjY1NDMwfQ.NIA-n4JT8a1L0dAGEzJNRgl23hhOQAuK8KTPbpEpehI';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjaWp5enR3cnJ4bXltYmhmY3dwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ2ODk0MzAsImV4cCI6MjEwMDI2NTQzMH0.pa8HmU8dQsvzHB3-S_nqyOW7MEznxE1f-8C0y1BTo2k';
 
 let _client = null;
 
