@@ -20,7 +20,7 @@
     if (data.user) {
       const { error: profileError } = await client
         .from('profiles')
-        .insert({
+        .upsert({
           id: data.user.id,
           email: email,
           full_name: profileData.full_name,
@@ -30,11 +30,11 @@
           age: profileData.age || null,
           paid: false,
           is_admin: false
-        });
+        }, { onConflict: 'id' });
 
       if (profileError) {
-        console.error('Profile insert error:', profileError);
-        // Don't throw here — auth succeeded; user can retry profile setup.
+        console.error('Profile upsert error:', profileError);
+        // Don't throw here — auth succeeded; trigger also creates a basic profile as fallback.
       }
     }
 

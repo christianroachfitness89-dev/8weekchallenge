@@ -173,9 +173,28 @@
     if(!user) return;
     currentUser = user;
 
-    const profile = await window.auth.getProfile(user.id);
+    let profile = null;
+    let profileError = null;
+    try{
+      const result = await client
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      profile = result.data;
+      profileError = result.error;
+    } catch(err){
+      profileError = err;
+    }
+
     if(!profile){
+      const errMsg = profileError ? (profileError.message || profileError.code || JSON.stringify(profileError)) : 'No profile found';
       document.getElementById('pageTitle').textContent = 'Could not load your profile';
+      const errorBox = document.createElement('div');
+      errorBox.className = 'msg show error';
+      errorBox.textContent = 'Error loading profile: ' + errMsg + '. Try refreshing, or contact the organiser if this persists.';
+      document.getElementById('pageTitle').parentNode.appendChild(errorBox);
+      console.error('Profile load error:', profileError);
       return;
     }
     currentProfile = profile;
