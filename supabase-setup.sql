@@ -312,7 +312,9 @@ insert into storage.buckets (id, name, public)
 values ('weighin-photos', 'weighin-photos', false)
 on conflict (id) do nothing;
 
--- Drop old recursive storage policy in case this is being run on an existing project.
+-- Drop existing storage policies so the script can be re-run safely.
+drop policy if exists "Users can upload own weighin photos" on storage.objects;
+drop policy if exists "Users can read own weighin photos" on storage.objects;
 drop policy if exists "Admins can read all weighin photos" on storage.objects;
 
 -- Users can upload/view their own weigh-in photos.
