@@ -13,23 +13,6 @@ as $$
   select coalesce((select is_admin from public.profiles where id = user_id), false);
 $$;
 
--- ---------- helper function: current challenge week ----------
--- Returns the active week number (0 during baseline, 1-8 during challenge, null after end).
-
-create or replace function public.current_challenge_week(challenge_row public.challenges)
-returns integer
-language sql
-stable
-as $$
-  select case
-    when challenge_row is null then null
-    when now() < challenge_row.baseline_opens_at then null
-    when now() < challenge_row.starts_at then 0
-    when now() > challenge_row.ends_at then null
-    else least(8, greatest(1, floor(extract(epoch from (now() - challenge_row.starts_at)) / 86400.0 / 7)::integer))
-  end;
-$$;
-
 -- ---------- tables ----------
 
 create table if not exists public.challenges (
@@ -58,6 +41,23 @@ drop trigger if exists set_challenge_dates on public.challenges;
 create trigger set_challenge_dates
   before insert or update on public.challenges
   for each row execute function public.set_challenge_dates();
+
+-- ---------- helper function: current challenge week ----------
+-- Returns the active week number (0 during baseline, 1-8 during challenge, null after end).
+
+create or replace function public.current_challenge_week(challenge_row public.challenges)
+returns integer
+language sql
+stable
+as $$
+  select case
+    when challenge_row is null then null
+    when now() < challenge_row.baseline_opens_at then null
+    when now() < challenge_row.starts_at then 0
+    when now() > challenge_row.ends_at then null
+    else least(8, greatest(1, floor(extract(epoch from (now() - challenge_row.starts_at)) / 86400.0 / 7)::integer))
+  end;
+$$;
 
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
