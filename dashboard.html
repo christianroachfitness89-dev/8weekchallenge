@@ -238,9 +238,10 @@
   }
 
   function updateStats(checkins){
-    const baseline = currentProfile.starting_weight_kg;
+    // Use the official Week 0 weigh-in as the baseline if it exists,
+    // otherwise fall back to the starting weight entered at signup.
     const week0 = currentCheckins[0];
-    const startWeight = week0 ? week0.weight_kg : baseline;
+    const startWeight = week0 ? week0.weight_kg : currentProfile.starting_weight_kg;
 
     let latest = null;
     checkins.forEach(function(c){
