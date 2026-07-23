@@ -50,10 +50,18 @@
     <div id="dashboardContent" class="hidden">
       <div class="dashboard-grid">
 
-        <!-- Left: check-in form -->
-        <div class="card">
-          <h3 style="font-size:22px;margin-bottom:20px;">Weekly Check-In</h3>
-          <form id="checkinForm" onsubmit="handleCheckin(event)">
+        <!-- Left column: check-in form + progress chart -->
+        <div>
+          <div class="card" style="margin-bottom:24px;">
+            <h3 style="font-size:22px;margin-bottom:20px;">Weight Progress</h3>
+            <div style="position:relative;height:260px;">
+              <canvas id="weightChart"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="font-size:22px;margin-bottom:20px;">Weekly Check-In</h3>
+            <form id="checkinForm" onsubmit="handleCheckin(event)">
 
             <div class="two-col">
               <div class="form-row">
@@ -123,9 +131,10 @@
             <button type="submit" class="submit-btn" id="ciSubmitBtn">Save Check-In</button>
             <div class="msg" id="ciMsg"></div>
           </form>
+          </div>
         </div>
 
-        <!-- Right: progress stats -->
+        <!-- Right: progress stats + progress photos -->
         <div class="card-muted">
           <h3 style="font-size:20px;margin-bottom:16px;">Your progress</h3>
           <div style="display:grid;gap:12px;">
@@ -147,6 +156,23 @@
             </div>
           </div>
           <p class="note">Remember: only rank and % progress appear on the public leaderboard. Your raw weight stays private.</p>
+
+          <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px;">
+            <h3 style="font-size:20px;margin-bottom:14px;">Progress Photos</h3>
+            <form id="progressPhotoForm" onsubmit="handleProgressPhoto(event)">
+              <div class="form-row">
+                <label for="ppFile">Upload a progress photo</label>
+                <input type="file" id="ppFile" accept="image/*" required>
+                <p class="hint">Optional progress shot. Private — only you and the organiser can see it.</p>
+              </div>
+              <button type="submit" class="submit-btn" id="ppSubmitBtn">Upload Photo</button>
+              <div class="msg" id="ppMsg"></div>
+            </form>
+
+            <div id="ppGallery" style="margin-top:18px;">
+              <div class="loading">Loading progress photos...</div>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -162,6 +188,7 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
 <script>
@@ -169,6 +196,7 @@
   let currentUser = null;
   let currentProfile = null;
   let currentCheckins = {};
+  let weightChart = null;
 
   function showMsg(el, text, type){
     el.textContent = text;
@@ -249,7 +277,9 @@
     document.getElementById('ciWeek').value = suggestedWeek.toString();
 
     await loadCheckins();
+    await loadProgressPhotos();
     loadWeekData();
+    renderWeightChart();
   }
 
   async function loadCheckins(){
@@ -267,6 +297,58 @@
     currentCheckins = {};
     (data || []).forEach(function(c){ currentCheckins[c.week] = c; });
     updateStats(data || []);
+  }
+
+  function renderWeightChart(){
+    const ctx = document.getElementById('weightChart');
+    if(!ctx) return;
+
+    const labels = [];
+    const dataPoints = [];
+    for(let i = 0; i <= 8; i++){
+      labels.push('Wk ' + i);
+      const c = currentCheckins[i];
+      dataPoints.push(c ? c.weight_kg : null);
+    }
+
+    if(weightChart){
+      weightChart.data.labels = labels;
+      weightChart.data.datasets[0].data = dataPoints;
+      weightChart.update();
+      return;
+    }
+
+    weightChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Weight (kg)',
+          data: dataPoints,
+          borderColor: '#df4a34',
+          backgroundColor: 'rgba(223,74,52,0.08)',
+          borderWidth: 2,
+          pointBackgroundColor: '#df4a34',
+          pointRadius: 4,
+          fill: true,
+          tension: 0.3,
+          spanGaps: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            title: { display: true, text: 'kg' },
+            beginAtZero: false
+          }
+        }
+      }
+    });
   }
 
   function updateStats(checkins){
@@ -427,6 +509,7 @@
       showMsg(msg, 'Check-in saved for Week ' + week + '.', 'success');
       document.getElementById('ciPhoto').value = '';
       await loadCheckins();
+      renderWeightChart();
       loadWeekData();
     } catch(err){
       console.error(err);
@@ -435,6 +518,100 @@
       btn.disabled = false;
       btn.textContent = currentCheckins[week] ? 'Update Check-In' : 'Save Check-In';
     }
+  }
+
+  async function uploadProgressPhoto(file){
+    if(!file) return null;
+    const ext = file.name.split('.').pop();
+    const safeExt = /^(jpg|jpeg|png|webp|heic)$/i.test(ext) ? ext.toLowerCase() : 'jpg';
+    const path = currentUser.id + '/' + Date.now() + '.' + safeExt;
+    const { data, error } = await client.storage
+      .from('progress-photos')
+      .upload(path, file, { contentType: file.type });
+    if(error) throw error;
+    return data.path;
+  }
+
+  async function handleProgressPhoto(e){
+    e.preventDefault();
+    const btn = document.getElementById('ppSubmitBtn');
+    const msg = document.getElementById('ppMsg');
+    const file = document.getElementById('ppFile').files[0];
+    msg.className = 'msg';
+
+    if(!file){
+      showMsg(msg, 'Please choose a photo to upload.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+
+    try{
+      const photoPath = await uploadProgressPhoto(file);
+      const { error } = await client.from('progress_photos').insert({
+        user_id: currentUser.id,
+        photo_path: photoPath
+      });
+      if(error) throw error;
+
+      document.getElementById('ppFile').value = '';
+      showMsg(msg, 'Progress photo uploaded.', 'success');
+      await loadProgressPhotos();
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Could not upload photo. Try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Upload Photo';
+    }
+  }
+
+  async function loadProgressPhotos(){
+    const gallery = document.getElementById('ppGallery');
+    try{
+      const { data, error } = await client
+        .from('progress_photos')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if(error) throw error;
+
+      if(!data || data.length === 0){
+        gallery.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">No progress photos yet.</p>';
+        return;
+      }
+
+      let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;">';
+      for(const p of data){
+        try{
+          const { data: urlData, error: urlError } = await client.storage
+            .from('progress-photos')
+            .createSignedUrl(p.photo_path, 300);
+          if(urlError) throw urlError;
+          html += '<div>' +
+            '<a href="' + escapeHtml(urlData.signedUrl) + '" target="_blank">' +
+              '<img src="' + escapeHtml(urlData.signedUrl) + '" alt="Progress photo" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius);border:1px solid var(--line);">' +
+            '</a>' +
+            '<div style="font-size:11px;color:var(--ink-soft);margin-top:4px;font-family:IBM Plex Mono,monospace;">' + new Date(p.created_at).toLocaleDateString() + '</div>' +
+          '</div>';
+        } catch(err){
+          console.error('Photo URL error:', err);
+        }
+      }
+      html += '</div>';
+      gallery.innerHTML = html;
+    } catch(err){
+      console.error('loadProgressPhotos error:', err);
+      gallery.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">Could not load progress photos.</p>';
+    }
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
   }
 
   async function handleSignOut(){

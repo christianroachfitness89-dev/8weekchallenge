@@ -48,6 +48,13 @@ create table if not exists public.challenge_settings (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.progress_photos (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  photo_path text not null,
+  created_at timestamptz not null default now()
+);
+
 -- Seed the single settings row. Leave start_at NULL until the organiser sets it.
 insert into public.challenge_settings (id, start_at) values (1, null)
 on conflict (id) do nothing;
@@ -56,12 +63,14 @@ on conflict (id) do nothing;
 
 create index if not exists idx_checkins_user_id on public.checkins(user_id);
 create index if not exists idx_checkins_week on public.checkins(week);
+create index if not exists idx_progress_photos_user_id on public.progress_photos(user_id);
 
 -- ---------- RLS enablement ----------
 
 alter table public.profiles enable row level security;
 alter table public.checkins enable row level security;
 alter table public.challenge_settings enable row level security;
+alter table public.progress_photos enable row level security;
 
 -- ---------- profile policies ----------
 
@@ -134,6 +143,35 @@ create policy "Authenticated users can read challenge settings"
 create policy "Admins can update challenge settings"
   on public.challenge_settings
   for update
+  to authenticated
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
+
+-- ---------- progress photo policies ----------
+
+-- Drop existing policies so the script can be re-run safely.
+drop policy if exists "Users can read own progress photos" on public.progress_photos;
+drop policy if exists "Users can insert own progress photos" on public.progress_photos;
+drop policy if exists "Admins can manage progress photos" on public.progress_photos;
+
+-- Users can view their own progress photos.
+create policy "Users can read own progress photos"
+  on public.progress_photos
+  for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- Users can upload their own progress photos.
+create policy "Users can insert own progress photos"
+  on public.progress_photos
+  for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+-- Admins can view all progress photos.
+create policy "Admins can manage progress photos"
+  on public.progress_photos
+  for all
   to authenticated
   using (public.is_admin(auth.uid()))
   with check (public.is_admin(auth.uid()));
@@ -337,6 +375,39 @@ create policy "Admins can read all weighin photos"
   to authenticated
   using (
     bucket_id = 'weighin-photos' and public.is_admin(auth.uid())
+  );
+
+-- ---------- storage bucket for progress photos ----------
+
+insert into storage.buckets (id, name, public)
+values ('progress-photos', 'progress-photos', false)
+on conflict (id) do nothing;
+
+-- Drop existing storage policies so the script can be re-run safely.
+drop policy if exists "Users can upload own progress photos" on storage.objects;
+drop policy if exists "Users can read own progress photos" on storage.objects;
+drop policy if exists "Admins can read all progress photos" on storage.objects;
+
+-- Users can upload/view their own progress photos.
+create policy "Users can upload own progress photos"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+create policy "Users can read own progress photos"
+  on storage.objects
+  for select
+  to authenticated
+  using (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Admins can read all progress photos.
+create policy "Admins can read all progress photos"
+  on storage.objects
+  for select
+  to authenticated
+  using (
+    bucket_id = 'progress-photos' and public.is_admin(auth.uid())
   );
 
 -- ---------- initial admin setup ----------
