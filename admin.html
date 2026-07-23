@@ -180,10 +180,21 @@
     btn.textContent = 'Saving...';
 
     try{
-      const { error } = await client.from('challenge_settings').upsert(
-        { id: 1, start_at: startAt, updated_at: new Date().toISOString() },
-        { onConflict: 'id' }
-      );
+      // Try update first — the row should always exist after seeding.
+      let { data, error } = await client
+        .from('challenge_settings')
+        .update({ start_at: startAt, updated_at: new Date().toISOString() })
+        .eq('id', 1)
+        .select();
+
+      // If no row was updated (table empty), insert it.
+      if(!error && (!data || data.length === 0)){
+        const insertResult = await client
+          .from('challenge_settings')
+          .insert({ id: 1, start_at: startAt, updated_at: new Date().toISOString() });
+        error = insertResult.error;
+      }
+
       if(error) throw error;
       showMsg(msg, 'Start date saved. Participant dashboards will unlock at that time.', 'success');
       await loadSettings();
