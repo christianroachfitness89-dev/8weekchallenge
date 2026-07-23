@@ -65,7 +65,9 @@ alter table public.challenge_settings enable row level security;
 
 -- ---------- profile policies ----------
 
--- Drop old recursive policies in case this is being run on an existing project.
+-- Drop existing policies so the script can be re-run safely.
+drop policy if exists "Users can read own profile" on public.profiles;
+drop policy if exists "Users can update own profile" on public.profiles;
 drop policy if exists "Admins can manage profiles" on public.profiles;
 
 -- Users can view their own profile.
@@ -93,7 +95,9 @@ create policy "Admins can manage profiles"
 
 -- ---------- checkin policies ----------
 
--- Drop old policies in case this is being run on an existing project.
+-- Drop existing policies so the script can be re-run safely.
+drop policy if exists "Users can read own checkins" on public.checkins;
+drop policy if exists "Users can insert own checkins" on public.checkins;
 drop policy if exists "Users can update own checkins" on public.checkins;
 drop policy if exists "Admins can manage checkins" on public.checkins;
 
