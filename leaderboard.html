@@ -7,6 +7,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/main.css">
+<style>
+  .challenge-picker{
+    display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+    margin-bottom:20px;
+  }
+  .challenge-picker select{
+    padding:10px 14px;border:1.5px solid var(--line);border-radius:var(--radius);
+    font-family:'Inter',sans-serif;font-size:15px;background:#fff;min-width:260px;
+  }
+  .challenge-picker label{font-weight:600;font-size:14px;}
+</style>
 </head>
 <body>
 
@@ -31,9 +42,16 @@
       <p class="sub">Ranked by percent of body weight lost from Week 0. Refreshes automatically.</p>
     </div>
 
+    <div class="challenge-picker">
+      <label for="lbChallenge">Cohort</label>
+      <select id="lbChallenge" onchange="onChallengeChange()">
+        <option value="">Loading cohorts...</option>
+      </select>
+    </div>
+
     <div class="lb-head">
       <span class="lb-updated" id="lbUpdated">Not loaded yet</span>
-      <button class="refresh-btn" onclick="window.leaderboard.load('lbContent','lbUpdated')">Refresh</button>
+      <button class="refresh-btn" onclick="refreshLeaderboard()">Refresh</button>
     </div>
 
     <div id="lbContent">
@@ -55,11 +73,78 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/leaderboard.js"></script>
 <script>
-  // Load immediately and then refresh every 20 seconds while the page is open.
-  window.leaderboard.load('lbContent', 'lbUpdated');
-  setInterval(function(){
-    window.leaderboard.load('lbContent', 'lbUpdated');
-  }, 20000);
+  let allChallenges = [];
+  let selectedChallengeId = null;
+
+  function fmtDateShort(iso){
+    if(!iso) return '';
+    return new Date(iso).toLocaleDateString(undefined, { month:'short', day:'numeric' });
+  }
+
+  async function init(){
+    try{
+      allChallenges = await window.leaderboard.fetchChallenges();
+    } catch(err){
+      console.error('Could not load challenges:', err);
+      document.getElementById('lbContent').innerHTML = '<div class="empty">Could not load cohort list. Try refreshing.</div>';
+      return;
+    }
+
+    const select = document.getElementById('lbChallenge');
+    select.innerHTML = '';
+
+    if(!allChallenges.length){
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = 'No cohorts available';
+      select.appendChild(opt);
+      document.getElementById('lbContent').innerHTML = '<div class="empty">No cohorts have been created yet.</div>';
+      return;
+    }
+
+    // Default to the challenge currently open or most recently started.
+    const now = new Date();
+    let defaultChallenge = allChallenges.find(function(c){
+      const start = new Date(c.starts_at);
+      const end = new Date(c.ends_at);
+      return !c.locked && now >= start && now <= end;
+    });
+    if(!defaultChallenge){
+      defaultChallenge = allChallenges.find(function(c){
+        return !c.locked && new Date(c.starts_at) > now;
+      });
+    }
+    if(!defaultChallenge){
+      defaultChallenge = allChallenges[0];
+    }
+
+    allChallenges.forEach(function(c){
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      const status = c.locked ? 'Archived' : new Date() > new Date(c.ends_at) ? 'Ended' : new Date() < new Date(c.baseline_opens_at) ? 'Pending' : 'Active';
+      opt.textContent = (c.name || 'Unnamed') + ' · starts ' + fmtDateShort(c.starts_at) + ' · ' + status;
+      select.appendChild(opt);
+    });
+
+    select.value = defaultChallenge.id;
+    selectedChallengeId = defaultChallenge.id;
+    await refreshLeaderboard();
+
+    // Auto-refresh every 20 seconds.
+    setInterval(refreshLeaderboard, 20000);
+  }
+
+  async function onChallengeChange(){
+    selectedChallengeId = document.getElementById('lbChallenge').value;
+    await refreshLeaderboard();
+  }
+
+  async function refreshLeaderboard(){
+    if(!selectedChallengeId) return;
+    await window.leaderboard.load('lbContent', 'lbUpdated', selectedChallengeId);
+  }
+
+  init();
 </script>
 
 </body>

@@ -7,8 +7,19 @@
 (function () {
   const client = window.sb;
 
-  async function fetchLeaderboard() {
-    const { data, error } = await client.rpc('get_leaderboard');
+  async function fetchChallenges() {
+    const { data, error } = await client
+      .from('challenges')
+      .select('*')
+      .order('starts_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function fetchLeaderboard(challengeId) {
+    const { data, error } = await client.rpc('get_leaderboard', {
+      target_challenge_id: challengeId
+    });
     if (error) throw error;
     return data || [];
   }
@@ -32,7 +43,7 @@
     if (!container) return;
 
     if (!rows || rows.length === 0) {
-      container.innerHTML = '<div class="empty">No entries yet. Be the first to submit your Week 0 weigh-in.</div>';
+      container.innerHTML = '<div class="empty">No paid entries for this cohort yet. The leaderboard will populate once Week 0 weigh-ins are in.</div>';
       if (updated) updated.textContent = 'Updated ' + new Date().toLocaleTimeString();
       return;
     }
@@ -65,11 +76,11 @@
     return d.innerHTML;
   }
 
-  async function loadLeaderboard(containerId, updatedId) {
+  async function loadLeaderboard(containerId, updatedId, challengeId) {
     const container = document.getElementById(containerId);
     if (container) container.innerHTML = '<div class="loading">Loading leaderboard...</div>';
     try {
-      const rows = await fetchLeaderboard();
+      const rows = await fetchLeaderboard(challengeId);
       renderLeaderboard(rows, containerId, updatedId);
     } catch (err) {
       console.error('Leaderboard load error:', err);
@@ -78,7 +89,8 @@
   }
 
   window.leaderboard = {
-    fetch: fetchLeaderboard,
+    fetchChallenges: fetchChallenges,
+    fetchLeaderboard: fetchLeaderboard,
     render: renderLeaderboard,
     load: loadLeaderboard,
     formatPct: formatPct,

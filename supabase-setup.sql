@@ -1,8 +1,8 @@
--- 8-Week Challenge — Supabase schema setup
+-- 8-Week Challenge — Supabase schema setup (multi-cohort version)
 -- Run this in the Supabase SQL Editor after creating your project.
+-- This script is idempotent and can be re-run safely.
 
 -- ---------- helper function: is the current user an admin? ----------
--- This is defined early so all RLS policies can reference it without recursion.
 
 create or replace function public.is_admin(user_id uuid)
 returns boolean
@@ -13,7 +13,51 @@ as $$
   select coalesce((select is_admin from public.profiles where id = user_id), false);
 $$;
 
+-- ---------- helper function: current challenge week ----------
+-- Returns the active week number (0 during baseline, 1-8 during challenge, null after end).
+
+create or replace function public.current_challenge_week(challenge_row public.challenges)
+returns integer
+language sql
+stable
+as $$
+  select case
+    when challenge_row is null then null
+    when now() < challenge_row.baseline_opens_at then null
+    when now() < challenge_row.starts_at then 0
+    when now() > challenge_row.ends_at then null
+    else least(8, greatest(1, floor(extract(epoch from (now() - challenge_row.starts_at)) / 86400.0 / 7)::integer))
+  end;
+$$;
+
 -- ---------- tables ----------
+
+create table if not exists public.challenges (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  baseline_opens_at timestamptz not null,
+  starts_at timestamptz not null,
+  ends_at timestamptz not null,
+  locked boolean not null default false,
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  constraint valid_dates check (baseline_opens_at < starts_at and starts_at < ends_at)
+);
+
+-- Automatically compute baseline (48h before start) and end (8 weeks after start).
+create or replace function public.set_challenge_dates()
+returns trigger as $$
+begin
+  new.baseline_opens_at := new.starts_at - interval '48 hours';
+  new.ends_at := new.starts_at + interval '56 days';
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists set_challenge_dates on public.challenges;
+create trigger set_challenge_dates
+  before insert or update on public.challenges
+  for each row execute function public.set_challenge_dates();
 
 create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
@@ -23,6 +67,7 @@ create table if not exists public.profiles (
   tier text not null check (tier in ('standard', 'f2f')),
   paid boolean not null default false,
   is_admin boolean not null default false,
+  challenge_id uuid references public.challenges on delete set null,
   starting_weight_kg numeric check (starting_weight_kg > 0),
   age integer check (age between 16 and 99),
   created_at timestamptz not null default now()
@@ -31,6 +76,7 @@ create table if not exists public.profiles (
 create table if not exists public.checkins (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
+  challenge_id uuid references public.challenges on delete cascade not null,
   week integer not null check (week between 0 and 8),
   weight_kg numeric not null check (weight_kg > 0),
   photo_path text,
@@ -39,54 +85,71 @@ create table if not exists public.checkins (
   adherence_rating integer check (adherence_rating between 1 and 5),
   notes text,
   created_at timestamptz not null default now(),
-  unique(user_id, week)
-);
-
-create table if not exists public.challenge_settings (
-  id integer primary key default 1 check (id = 1),
-  start_at timestamptz,
-  updated_at timestamptz not null default now()
+  unique(user_id, challenge_id, week)
 );
 
 create table if not exists public.progress_photos (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users on delete cascade not null,
+  challenge_id uuid references public.challenges on delete cascade,
   photo_path text not null,
   created_at timestamptz not null default now()
 );
 
--- Seed the single settings row. Leave start_at NULL until the organiser sets it.
-insert into public.challenge_settings (id, start_at) values (1, null)
-on conflict (id) do nothing;
-
 -- ---------- indexes ----------
 
 create index if not exists idx_checkins_user_id on public.checkins(user_id);
+create index if not exists idx_checkins_challenge_id on public.checkins(challenge_id);
 create index if not exists idx_checkins_week on public.checkins(week);
 create index if not exists idx_progress_photos_user_id on public.progress_photos(user_id);
+create index if not exists idx_progress_photos_challenge_id on public.progress_photos(challenge_id);
 
 -- ---------- RLS enablement ----------
 
+alter table public.challenges enable row level security;
 alter table public.profiles enable row level security;
 alter table public.checkins enable row level security;
-alter table public.challenge_settings enable row level security;
 alter table public.progress_photos enable row level security;
+
+-- ---------- challenge policies ----------
+
+drop policy if exists "Admins can manage challenges" on public.challenges;
+drop policy if exists "Authenticated users can read challenges" on public.challenges;
+drop policy if exists "Anyone can read challenges" on public.challenges;
+
+create policy "Authenticated users can read challenges"
+  on public.challenges
+  for select
+  to authenticated
+  using (true);
+
+-- Public visitors can see challenge names and dates for leaderboard selection.
+create policy "Anyone can read challenges"
+  on public.challenges
+  for select
+  to anon
+  using (true);
+
+-- Only admins can create/update/delete challenges.
+create policy "Admins can manage challenges"
+  on public.challenges
+  for all
+  to authenticated
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
 
 -- ---------- profile policies ----------
 
--- Drop existing policies so the script can be re-run safely.
 drop policy if exists "Users can read own profile" on public.profiles;
 drop policy if exists "Users can update own profile" on public.profiles;
 drop policy if exists "Admins can manage profiles" on public.profiles;
 
--- Users can view their own profile.
 create policy "Users can read own profile"
   on public.profiles
   for select
   to authenticated
   using (auth.uid() = id);
 
--- Users can update their own profile (phone, tier, starting weight before challenge begins).
 create policy "Users can update own profile"
   on public.profiles
   for update
@@ -94,7 +157,6 @@ create policy "Users can update own profile"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
--- Admins can do anything with profiles.
 create policy "Admins can manage profiles"
   on public.profiles
   for all
@@ -104,27 +166,22 @@ create policy "Admins can manage profiles"
 
 -- ---------- checkin policies ----------
 
--- Drop existing policies so the script can be re-run safely.
 drop policy if exists "Users can read own checkins" on public.checkins;
 drop policy if exists "Users can insert own checkins" on public.checkins;
-drop policy if exists "Users can update own checkins" on public.checkins;
 drop policy if exists "Admins can manage checkins" on public.checkins;
 
--- Users can view their own check-ins.
 create policy "Users can read own checkins"
   on public.checkins
   for select
   to authenticated
   using (auth.uid() = user_id);
 
--- Users can insert their own check-ins.
 create policy "Users can insert own checkins"
   on public.checkins
   for insert
   to authenticated
   with check (auth.uid() = user_id);
 
--- Admins can do anything with check-ins.
 create policy "Admins can manage checkins"
   on public.checkins
   for all
@@ -132,43 +189,24 @@ create policy "Admins can manage checkins"
   using (public.is_admin(auth.uid()))
   with check (public.is_admin(auth.uid()));
 
--- ---------- challenge settings policies ----------
-
-create policy "Authenticated users can read challenge settings"
-  on public.challenge_settings
-  for select
-  to authenticated
-  using (true);
-
-create policy "Admins can update challenge settings"
-  on public.challenge_settings
-  for update
-  to authenticated
-  using (public.is_admin(auth.uid()))
-  with check (public.is_admin(auth.uid()));
-
 -- ---------- progress photo policies ----------
 
--- Drop existing policies so the script can be re-run safely.
 drop policy if exists "Users can read own progress photos" on public.progress_photos;
 drop policy if exists "Users can insert own progress photos" on public.progress_photos;
 drop policy if exists "Admins can manage progress photos" on public.progress_photos;
 
--- Users can view their own progress photos.
 create policy "Users can read own progress photos"
   on public.progress_photos
   for select
   to authenticated
   using (auth.uid() = user_id);
 
--- Users can upload their own progress photos.
 create policy "Users can insert own progress photos"
   on public.progress_photos
   for insert
   to authenticated
   with check (auth.uid() = user_id);
 
--- Admins can view all progress photos.
 create policy "Admins can manage progress photos"
   on public.progress_photos
   for all
@@ -176,65 +214,65 @@ create policy "Admins can manage progress photos"
   using (public.is_admin(auth.uid()))
   with check (public.is_admin(auth.uid()));
 
--- ---------- trigger: prevent participants editing submitted check-ins ----------
+-- ---------- trigger: enforce challenge lifecycle rules ----------
 
-create or replace function public.prevent_checkin_edit()
+create or replace function public.enforce_challenge_rules()
 returns trigger as $$
 declare
+  challenge_record public.challenges;
   claims json;
   role text;
+  active_week integer;
+  current_existing public.checkins;
 begin
   claims := coalesce(current_setting('request.jwt.claims', true), '{}')::json;
   role := claims->>'role';
 
-  -- Allow admins and service-role connections to edit.
+  -- Admins and service-role can bypass lifecycle rules.
   if role = 'service_role' or public.is_admin(auth.uid()) then
     return new;
   end if;
 
-  raise exception 'Check-ins cannot be edited once submitted. Contact the organiser if you need to make a change.';
-end;
-$$ language plpgsql security definer;
-
-drop trigger if exists prevent_checkin_edit on public.checkins;
-create trigger prevent_checkin_edit
-  before update on public.checkins
-  for each row execute function public.prevent_checkin_edit();
-
--- ---------- trigger: enforce challenge start date ----------
-
-create or replace function public.enforce_challenge_start()
-returns trigger as $$
-declare
-  start_time timestamptz;
-  claims json;
-  role text;
-begin
-  claims := coalesce(current_setting('request.jwt.claims', true), '{}')::json;
-  role := claims->>'role';
-
-  -- Admins and service-role connections can bypass the start lock.
-  if role = 'service_role' or public.is_admin(auth.uid()) then
-    return new;
+  select * into challenge_record from public.challenges where id = new.challenge_id;
+  if challenge_record is null then
+    raise exception 'Challenge not found.';
   end if;
 
-  select start_at into start_time from public.challenge_settings where id = 1;
+  if challenge_record.locked then
+    raise exception 'This challenge is locked. No more check-ins can be submitted.';
+  end if;
 
-  if start_time is not null and now() < start_time then
-    raise exception 'Challenge has not started yet. Check-ins open at %.', start_time;
+  active_week := public.current_challenge_week(challenge_record);
+
+  if active_week is null then
+    if now() < challenge_record.baseline_opens_at then
+      raise exception 'Baseline check-in opens at %.', challenge_record.baseline_opens_at;
+    else
+      raise exception 'This challenge has ended. No more check-ins can be submitted.';
+    end if;
+  end if;
+
+  if new.week != active_week then
+    raise exception 'Only Week % is open for check-ins right now.', active_week;
+  end if;
+
+  -- Prevent editing existing check-ins.
+  select * into current_existing from public.checkins
+  where user_id = new.user_id and challenge_id = new.challenge_id and week = new.week;
+  if current_existing is not null then
+    raise exception 'Week % has already been submitted for this challenge and cannot be edited.', new.week;
   end if;
 
   return new;
 end;
 $$ language plpgsql security definer;
 
-drop trigger if exists enforce_challenge_start on public.checkins;
-create trigger enforce_challenge_start
+drop trigger if exists enforce_challenge_rules on public.checkins;
+create trigger enforce_challenge_rules
   before insert or update on public.checkins
-  for each row execute function public.enforce_challenge_start();
+  for each row execute function public.enforce_challenge_rules();
 
 -- ---------- trigger: auto-create profile on signup ----------
--- This is a safety net in case client-side profile upsert fails.
 
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -275,9 +313,9 @@ create or replace trigger on_auth_user_updated
   for each row execute function public.handle_user_email_update();
 
 -- ---------- public leaderboard function ----------
--- Returns a safe leaderboard payload accessible by anonymous/public users.
+-- Returns a safe leaderboard payload for a specific challenge.
 
-create or replace function public.get_leaderboard()
+create or replace function public.get_leaderboard(target_challenge_id uuid)
 returns table (
   user_id uuid,
   full_name text,
@@ -297,6 +335,7 @@ begin
       c.weight_kg as latest_weight,
       c.week as latest_week
     from public.checkins c
+    where c.challenge_id = target_challenge_id
     order by c.user_id, c.week desc
   ),
   baseline as (
@@ -304,7 +343,7 @@ begin
       c.user_id,
       c.weight_kg as baseline_weight
     from public.checkins c
-    where c.week = 0
+    where c.challenge_id = target_challenge_id and c.week = 0
   ),
   counts as (
     select
@@ -312,12 +351,12 @@ begin
       count(*) filter (where c.week > 0) as weeks_logged,
       count(*) filter (where c.week in (0,4,8) and c.photo_path is not null) as verified_weigh_ins
     from public.checkins c
+    where c.challenge_id = target_challenge_id
     group by c.user_id
   )
   select
     p.id as user_id,
     p.full_name,
-    -- Show first name + last initial for privacy.
     case
       when p.full_name is null then '?'
       else regexp_replace(p.full_name, '^([^ ]+).*', '\1') || ' ' || left(coalesce(split_part(p.full_name, ' ', 2), ''), 1)
@@ -336,26 +375,29 @@ begin
   left join baseline b on b.user_id = p.id
   left join counts c on c.user_id = p.id
   where p.paid = true
+    and p.challenge_id = target_challenge_id
   order by pct_lost desc;
 end;
 $$;
 
--- Allow public/anonymous access to the leaderboard function.
-grant execute on function public.get_leaderboard() to anon;
-grant execute on function public.get_leaderboard() to authenticated;
+grant execute on function public.get_leaderboard(uuid) to anon;
+grant execute on function public.get_leaderboard(uuid) to authenticated;
 
--- ---------- storage bucket for weigh-in photos ----------
+-- ---------- storage buckets ----------
 
 insert into storage.buckets (id, name, public)
 values ('weighin-photos', 'weighin-photos', false)
 on conflict (id) do nothing;
 
--- Drop existing storage policies so the script can be re-run safely.
+insert into storage.buckets (id, name, public)
+values ('progress-photos', 'progress-photos', false)
+on conflict (id) do nothing;
+
+-- Drop and recreate weigh-in photo storage policies.
 drop policy if exists "Users can upload own weighin photos" on storage.objects;
 drop policy if exists "Users can read own weighin photos" on storage.objects;
 drop policy if exists "Admins can read all weighin photos" on storage.objects;
 
--- Users can upload/view their own weigh-in photos.
 create policy "Users can upload own weighin photos"
   on storage.objects
   for insert
@@ -368,27 +410,17 @@ create policy "Users can read own weighin photos"
   to authenticated
   using (bucket_id = 'weighin-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 
--- Admins can read all weigh-in photos.
 create policy "Admins can read all weighin photos"
   on storage.objects
   for select
   to authenticated
-  using (
-    bucket_id = 'weighin-photos' and public.is_admin(auth.uid())
-  );
+  using (bucket_id = 'weighin-photos' and public.is_admin(auth.uid()));
 
--- ---------- storage bucket for progress photos ----------
-
-insert into storage.buckets (id, name, public)
-values ('progress-photos', 'progress-photos', false)
-on conflict (id) do nothing;
-
--- Drop existing storage policies so the script can be re-run safely.
+-- Drop and recreate progress photo storage policies.
 drop policy if exists "Users can upload own progress photos" on storage.objects;
 drop policy if exists "Users can read own progress photos" on storage.objects;
 drop policy if exists "Admins can read all progress photos" on storage.objects;
 
--- Users can upload/view their own progress photos.
 create policy "Users can upload own progress photos"
   on storage.objects
   for insert
@@ -401,14 +433,15 @@ create policy "Users can read own progress photos"
   to authenticated
   using (bucket_id = 'progress-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 
--- Admins can read all progress photos.
 create policy "Admins can read all progress photos"
   on storage.objects
   for select
   to authenticated
-  using (
-    bucket_id = 'progress-photos' and public.is_admin(auth.uid())
-  );
+  using (bucket_id = 'progress-photos' and public.is_admin(auth.uid()));
+
+-- ---------- clean up legacy single-cohort challenge_settings table ----------
+
+drop table if exists public.challenge_settings cascade;
 
 -- ---------- initial admin setup ----------
 -- After deploying, create your own admin account through signup, then run:

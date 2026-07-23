@@ -28,12 +28,14 @@ This guide walks you through getting the hosted site live with Supabase (databas
 4. Click **Run**.
 
 This creates:
-- `profiles` table (one row per entrant)
-- `checkins` table (weekly weigh-ins)
+- `challenges` table (one row per cohort, with Monday start dates, 48h baseline window, and 8-week end date)
+- `profiles` table (one row per entrant, with a `challenge_id` assignment)
+- `checkins` table (weekly weigh-ins, tied to a specific challenge)
+- `progress_photos` table (private progress photos per cohort)
 - Row Level Security policies (entrants only see their own data; admins see everything)
-- A public `get_leaderboard()` function for the leaderboard page
-- A private `weighin-photos` storage bucket for official weigh-in photos
-- Triggers that keep the profile row in sync with the auth user
+- A public `get_leaderboard(target_challenge_id)` function for per-cohort leaderboards
+- Private `weighin-photos` and `progress-photos` storage buckets
+- Triggers that keep the profile row in sync with the auth user and enforce the challenge lifecycle
 
 ---
 
@@ -61,6 +63,8 @@ This creates:
    - `https://YOUR_PROJECT_ID.supabase.co` with your Supabase **Project URL**
    - `YOUR_SUPABASE_ANON_KEY` with your Supabase **anon public API key**
 3. Save the file.
+
+> Never paste your service-role key into the frontend. Only the anon key belongs in `supabase-client.js`.
 
 ---
 
@@ -105,29 +109,44 @@ If you own a domain, go to **Netlify > Domain settings** and connect it. Then up
 
 ---
 
-## Step 8: Test the full flow
+## Step 8: Create your first cohort
+
+1. Log in to the admin panel at `admin.html`.
+2. Under **Create New Cohort**, give it a name (e.g. “Summer 2026”) and pick a Monday start date/time.
+3. Click **Create Cohort**.
+4. Supabase automatically sets:
+   - **Baseline opens** = 48 hours before the start
+   - **End date** = 8 weeks after the start
+
+You can create multiple cohorts. Each entrant is assigned to exactly one cohort at a time.
+
+---
+
+## Step 9: Test the full flow
 
 1. Visit your live site and click **Enter Now**.
 2. Sign up as a test entrant with a real email.
 3. You should be redirected to Stripe.
 4. Complete a test payment (use Stripe test card `4242 4242 4242 4242`, any future date, any CVC, any ZIP).
 5. You land on `payment-success.html`.
-6. In Supabase, set your test entrant’s `paid` flag to `true` (this is what you’ll do for real entrants after checking Stripe).
+6. In Supabase or in `admin.html`, set your test entrant’s `paid` flag to `true` and assign them to your test cohort.
 7. Log in at `login.html`.
-8. Submit a Week 0 weigh-in in kg and upload a photo.
-9. Submit a Week 1 weigh-in in kg.
-10. Visit `leaderboard.html` — your test entrant should appear.
+8. During the 48-hour baseline window, submit a Week 0 weigh-in in kg and upload a photo.
+9. After the Monday start, submit a Week 1 weigh-in in kg.
+10. Visit `leaderboard.html`, pick your cohort, and confirm your test entrant appears.
 
 ---
 
-## Step 9: Running the challenge each week
+## Step 10: Running the challenge each week
 
 | Day | Action |
 |-----|--------|
+| Saturday/Sunday (baseline window) | Remind entrants to submit Week 0 before the Monday start. |
 | Monday | Post the updated leaderboard to the community group. Review any safety flags in `admin.html`. |
-| Sunday | Remind entrants to check in before the deadline. |
-| Anytime | Mark entrants paid in `admin.html` after confirming their Stripe payment. |
+| Sunday | Remind entrants to check in before the new week starts. |
+| Anytime | Mark entrants paid and assign them to a cohort in `admin.html` after confirming their Stripe payment. |
 | Week 4 & 8 | Remind entrants to upload their official weigh-in photo. |
+| After Week 8 | Click **Lock / Archive** on the cohort in `admin.html` to freeze the leaderboard and stop further check-ins. |
 
 ---
 
@@ -141,9 +160,21 @@ You forgot to update `js/supabase-client.js`. The sign-up page will refuse to re
 
 Email confirmation is still enabled in Supabase. Either configure SMTP properly or disable confirmation in Auth settings.
 
+### Dashboard says “Not assigned to a cohort yet”
+
+The entrant is paid but has not been assigned to a challenge. Go to `admin.html` and select a cohort in the entrant row.
+
+### “Baseline check-in opens at …”
+
+The entrant is trying to submit a Week 0 weigh-in before the 48-hour baseline window opens. They must wait until Saturday/Sunday before the Monday start.
+
+### “Only Week X is open”
+
+Entrants can only submit the currently open week. The database trigger blocks early or late submissions. Admins can override from `admin.html` if needed.
+
 ### Leaderboard is empty
 
-The leaderboard only shows **paid** entrants with a **Week 0 baseline** submitted. Make sure the entrant is marked paid and has submitted a Week 0 check-in.
+The leaderboard only shows **paid** entrants assigned to that cohort who have submitted a **Week 0 baseline**. Make sure the entrant is paid, assigned to the cohort, and has a Week 0 check-in.
 
 ### Admin page redirects to dashboard
 
@@ -151,7 +182,7 @@ Your profile row has `is_admin = false`. Update it in Supabase.
 
 ### Photo uploads fail
 
-Check that you ran `supabase-setup.sql` completely, including the storage bucket and storage policies.
+Check that you ran `supabase-setup.sql` completely, including both storage buckets and storage policies.
 
 ---
 

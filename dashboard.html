@@ -35,15 +35,21 @@
     <!-- Payment pending notice -->
     <div class="card hidden" id="paymentNotice" style="margin-bottom:24px;border-color:var(--yellow);">
       <h3 style="font-size:20px;">Payment pending</h3>
-      <p>Your account is created, but your check-in dashboard will unlock once the organiser confirms your payment. If you already paid, please allow a few hours for activation.</p>
+      <p>Your account is created, but your check-in dashboard will unlock once the organiser confirms your payment.</p>
       <a href="index.html" class="btn-ghost">Back to home</a>
     </div>
 
-    <!-- Challenge not started notice -->
-    <div class="card hidden" id="challengeNotice" style="margin-bottom:24px;border-color:var(--yellow);">
-      <h3 style="font-size:20px;">Challenge not open yet</h3>
-      <p id="challengeNoticeText">The challenge start date has not been set. Please check back soon.</p>
+    <!-- Not assigned to a challenge -->
+    <div class="card hidden" id="assignNotice" style="margin-bottom:24px;border-color:var(--yellow);">
+      <h3 style="font-size:20px;">Not assigned to a cohort yet</h3>
+      <p>Your payment is confirmed, but the organiser has not placed you into a challenge cohort. You’ll be notified once your cohort is assigned.</p>
       <a href="index.html" class="btn-ghost">Back to home</a>
+    </div>
+
+    <!-- Challenge lifecycle notice -->
+    <div class="card hidden" id="challengeNotice" style="margin-bottom:24px;border-color:var(--yellow);">
+      <h3 style="font-size:20px;" id="challengeNoticeTitle">Challenge not open yet</h3>
+      <p id="challengeNoticeText">Check back soon.</p>
     </div>
 
     <!-- Paid dashboard -->
@@ -52,6 +58,16 @@
 
         <!-- Left column: check-in form + progress chart -->
         <div>
+          <div class="card" style="margin-bottom:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+              <div>
+                <h3 style="font-size:20px;">Current Cohort</h3>
+                <div id="challengeInfo" style="font-size:14px;color:var(--ink-soft);line-height:1.5;margin-top:4px;">Loading...</div>
+              </div>
+              <div id="challengeBadge" class="tag tag-paid" style="font-size:11px;text-transform:uppercase;">Active</div>
+            </div>
+          </div>
+
           <div class="card" style="margin-bottom:24px;">
             <h3 style="font-size:22px;margin-bottom:20px;">Weight Progress</h3>
             <div style="position:relative;height:260px;">
@@ -139,7 +155,7 @@
           <h3 style="font-size:20px;margin-bottom:16px;">Your progress</h3>
           <div style="display:grid;gap:12px;">
             <div class="progress-stat">
-              <span class="stat-label">Starting weight</span>
+              <span class="stat-label">Baseline weight</span>
               <span class="stat-value" id="statStart">—</span>
             </div>
             <div class="progress-stat">
@@ -195,12 +211,34 @@
   const client = window.sb;
   let currentUser = null;
   let currentProfile = null;
+  let currentChallenge = null;
   let currentCheckins = {};
   let weightChart = null;
+  let activeWeek = null;
 
   function showMsg(el, text, type){
     el.textContent = text;
     el.className = 'msg show ' + type;
+  }
+
+  function fmtDate(iso){
+    if(!iso) return '—';
+    return new Date(iso).toLocaleString(undefined, { weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+
+  function currentWeekForChallenge(challenge){
+    const now = new Date();
+    const baseline = new Date(challenge.baseline_opens_at);
+    const start = new Date(challenge.starts_at);
+    const end = new Date(challenge.ends_at);
+
+    if(now < baseline) return null;
+    if(now > end) return null;
+    if(now < start) return 0;
+
+    const diffMs = now - start;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    return Math.min(8, Math.max(1, Math.floor(diffDays / 7)));
   }
 
   async function init(){
@@ -242,39 +280,64 @@
       return;
     }
 
-    // Load challenge settings to enforce the start date.
-    const { data: settings, error: settingsError } = await client
-      .from('challenge_settings')
-      .select('*')
-      .single();
-
-    if(settingsError || !settings || !settings.start_at){
-      document.getElementById('challengeNotice').classList.remove('hidden');
-      if(settings && !settings.start_at){
-        document.getElementById('challengeNoticeText').textContent = 'The challenge start date has not been set by the organiser yet. Please check back soon.';
-      } else if(settingsError){
-        document.getElementById('challengeNoticeText').textContent = 'Could not load challenge settings. Please try again later.';
-      }
+    if(!profile.challenge_id){
+      document.getElementById('assignNotice').classList.remove('hidden');
       return;
     }
 
-    const startAt = new Date(settings.start_at);
-    const now = new Date();
-    if(now < startAt){
+    const { data: challenge, error: challengeError } = await client
+      .from('challenges')
+      .select('*')
+      .eq('id', profile.challenge_id)
+      .single();
+
+    if(challengeError || !challenge){
       document.getElementById('challengeNotice').classList.remove('hidden');
-      document.getElementById('challengeNoticeText').innerHTML =
-        'The challenge starts on <strong>' + startAt.toLocaleString() + '</strong>. Check-ins will open then.';
+      document.getElementById('challengeNoticeText').textContent = challengeError
+        ? 'Could not load your challenge: ' + challengeError.message
+        : 'Your assigned challenge could not be found. Contact the organiser.';
+      return;
+    }
+
+    currentChallenge = challenge;
+    activeWeek = currentWeekForChallenge(challenge);
+
+    const now = new Date();
+    const baseline = new Date(challenge.baseline_opens_at);
+    const start = new Date(challenge.starts_at);
+    const end = new Date(challenge.ends_at);
+
+    if(challenge.locked || now > end){
+      document.getElementById('challengeNotice').classList.remove('hidden');
+      document.getElementById('challengeNoticeTitle').textContent = 'Challenge locked';
+      document.getElementById('challengeNoticeText').textContent =
+        'This cohort finished on ' + fmtDate(challenge.ends_at) + '. The leaderboard is archived. You can still view your history below.';
+      // Show dashboard in read-only-ish mode but no check-ins.
+      document.getElementById('dashboardContent').classList.remove('hidden');
+      document.getElementById('checkinForm').style.display = 'none';
+      renderChallengeInfo();
+      await loadCheckins();
+      renderWeightChart();
+      await loadProgressPhotos();
+      return;
+    }
+
+    if(now < baseline){
+      document.getElementById('challengeNotice').classList.remove('hidden');
+      document.getElementById('challengeNoticeTitle').textContent = 'Baseline opens soon';
+      document.getElementById('challengeNoticeText').textContent =
+        'Your challenge starts on ' + fmtDate(challenge.starts_at) + '. Baseline weigh-in opens 48 hours before at ' + fmtDate(challenge.baseline_opens_at) + '.';
       return;
     }
 
     document.getElementById('dashboardContent').classList.remove('hidden');
+    renderChallengeInfo();
 
-    // Default week selection to current week since the challenge started.
-    const today = new Date();
-    const diffMs = today - startAt;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const suggestedWeek = Math.min(8, Math.max(1, Math.floor(diffDays / 7)));
-    document.getElementById('ciWeek').value = suggestedWeek.toString();
+    // Default week selection to the currently open week.
+    const ciWeek = document.getElementById('ciWeek');
+    if(activeWeek !== null){
+      ciWeek.value = String(activeWeek);
+    }
 
     await loadCheckins();
     await loadProgressPhotos();
@@ -282,11 +345,36 @@
     renderWeightChart();
   }
 
+  function renderChallengeInfo(){
+    if(!currentChallenge) return;
+    const c = currentChallenge;
+    const now = new Date();
+    const start = new Date(c.starts_at);
+    const end = new Date(c.ends_at);
+    const baseline = new Date(c.baseline_opens_at);
+
+    let status = 'Active';
+    let statusClass = 'tag tag-paid';
+    if(c.locked || now > end){ status = 'Archived'; statusClass = 'tag tag-unpaid'; }
+    else if(now < baseline){ status = 'Pending'; statusClass = 'tag'; }
+
+    document.getElementById('challengeBadge').className = statusClass;
+    document.getElementById('challengeBadge').textContent = status;
+
+    let html = '<strong>' + escapeHtml(c.name || 'Unnamed Challenge') + '</strong><br>';
+    html += 'Baseline opens: ' + fmtDate(c.baseline_opens_at) + '<br>';
+    html += 'Starts: ' + fmtDate(c.starts_at) + '<br>';
+    html += 'Ends: ' + fmtDate(c.ends_at);
+    document.getElementById('challengeInfo').innerHTML = html;
+  }
+
   async function loadCheckins(){
+    if(!currentChallenge) return;
     const { data, error } = await client
       .from('checkins')
       .select('*')
       .eq('user_id', currentUser.id)
+      .eq('challenge_id', currentChallenge.id)
       .order('week', { ascending: true });
 
     if(error){
@@ -352,8 +440,6 @@
   }
 
   function updateStats(checkins){
-    // Use the official Week 0 weigh-in as the baseline if it exists,
-    // otherwise fall back to the starting weight entered at signup.
     const week0 = currentCheckins[0];
     const startWeight = week0 ? week0.weight_kg : currentProfile.starting_weight_kg;
 
@@ -390,15 +476,15 @@
     btn.disabled = !editable;
     btn.textContent = editable ? 'Save Check-In' : 'Already Submitted';
 
-    const lockedMsg = document.getElementById('ciLockedMsg');
+    let lockedMsg = document.getElementById('ciLockedMsg');
     if(!editable){
       if(!lockedMsg){
         const msgDiv = document.createElement('div');
         msgDiv.id = 'ciLockedMsg';
         msgDiv.className = 'msg show info';
         btn.parentNode.insertBefore(msgDiv, btn.nextSibling);
+        lockedMsg = msgDiv;
       }
-      lockedMsg = document.getElementById('ciLockedMsg');
       lockedMsg.textContent = message || 'This week has already been submitted and cannot be edited.';
     } else if(lockedMsg){
       lockedMsg.remove();
@@ -418,6 +504,13 @@
       photoRow.classList.add('hidden');
     }
 
+    // Disable weeks that are not currently open if challenge is active.
+    const weekSelect = document.getElementById('ciWeek');
+    for(let i = 0; i <= 8; i++){
+      const opt = weekSelect.querySelector('option[value="' + i + '"]');
+      if(opt) opt.disabled = (activeWeek !== null && i !== activeWeek);
+    }
+
     if(existing){
       document.getElementById('ciWeight').value = existing.weight_kg;
       document.getElementById('ciWorkouts').value = existing.workouts_completed || 0;
@@ -432,7 +525,14 @@
       document.getElementById('ciAdherence').value = '';
       document.getElementById('ciNotes').value = '';
       document.getElementById('ciPhoto').value = '';
-      setCheckinEditable(true);
+
+      if(activeWeek !== null && week !== activeWeek){
+        setCheckinEditable(false, 'Only Week ' + activeWeek + ' is open for check-ins right now.');
+      } else if(currentChallenge && (currentChallenge.locked || new Date() > new Date(currentChallenge.ends_at))){
+        setCheckinEditable(false, 'This challenge has ended. No more check-ins can be submitted.');
+      } else {
+        setCheckinEditable(true);
+      }
     }
   }
 
@@ -450,6 +550,8 @@
 
   async function handleCheckin(e){
     e.preventDefault();
+    if(!currentChallenge) return;
+
     const btn = document.getElementById('ciSubmitBtn');
     const msg = document.getElementById('ciMsg');
     msg.className = 'msg';
@@ -467,6 +569,11 @@
       return;
     }
 
+    if(activeWeek !== null && week !== activeWeek){
+      showMsg(msg, 'Only Week ' + activeWeek + ' is open for check-ins right now.', 'error');
+      return;
+    }
+
     if(isNaN(weight) || weight < 30 || weight > 300){
       showMsg(msg, 'Please enter a realistic weight in kg (30–300).', 'error');
       return;
@@ -477,23 +584,21 @@
 
     try{
       let photoPath = null;
-
       if(photoFile){
         photoPath = await uploadPhoto(photoFile, week);
       }
 
-      // Safety flag: >3% loss in a single week.
-      const prev = currentCheckins[week - 1];
-      if(prev && prev.weight_kg > 0){
-        const weeklyPct = ((prev.weight_kg - weight) / prev.weight_kg) * 100;
-        if(weeklyPct > 3){
-          console.warn('Safety flag: weekly loss >3%', weeklyPct);
-          // Still save, but could surface a warning. For now we let it save.
-        }
+      // Official weigh-in weeks require a photo.
+      if([0,4,8].includes(week) && !photoPath){
+        showMsg(msg, 'A photo is required for Week 0, 4, and 8 official weigh-ins.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Save Check-In';
+        return;
       }
 
       const payload = {
         user_id: currentUser.id,
+        challenge_id: currentChallenge.id,
         week: week,
         weight_kg: weight,
         workouts_completed: workouts,
@@ -514,9 +619,8 @@
     } catch(err){
       console.error(err);
       showMsg(msg, err.message || 'Could not save check-in. Try again.', 'error');
-    } finally {
       btn.disabled = false;
-      btn.textContent = currentCheckins[week] ? 'Update Check-In' : 'Save Check-In';
+      btn.textContent = 'Save Check-In';
     }
   }
 
@@ -534,6 +638,8 @@
 
   async function handleProgressPhoto(e){
     e.preventDefault();
+    if(!currentChallenge) return;
+
     const btn = document.getElementById('ppSubmitBtn');
     const msg = document.getElementById('ppMsg');
     const file = document.getElementById('ppFile').files[0];
@@ -551,6 +657,7 @@
       const photoPath = await uploadProgressPhoto(file);
       const { error } = await client.from('progress_photos').insert({
         user_id: currentUser.id,
+        challenge_id: currentChallenge.id,
         photo_path: photoPath
       });
       if(error) throw error;
@@ -569,17 +676,20 @@
 
   async function loadProgressPhotos(){
     const gallery = document.getElementById('ppGallery');
+    if(!currentChallenge) return;
+
     try{
       const { data, error } = await client
         .from('progress_photos')
         .select('*')
         .eq('user_id', currentUser.id)
+        .eq('challenge_id', currentChallenge.id)
         .order('created_at', { ascending: false });
 
       if(error) throw error;
 
       if(!data || data.length === 0){
-        gallery.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">No progress photos yet.</p>';
+        gallery.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">No progress photos yet for this cohort.</p>';
         return;
       }
 
@@ -619,7 +729,6 @@
     window.location.href = 'index.html';
   }
 
-  // Kick off.
   init();
 </script>
 

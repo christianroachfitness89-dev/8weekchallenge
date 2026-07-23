@@ -29,7 +29,8 @@
           starting_weight_kg: profileData.starting_weight_kg || null,
           age: profileData.age || null,
           paid: false,
-          is_admin: false
+          is_admin: false,
+          challenge_id: null
         }, { onConflict: 'id' });
 
       if (profileError) {

@@ -19,6 +19,16 @@
     padding:8px 14px;cursor:pointer;text-transform:uppercase;letter-spacing:0.04em;
   }
   .admin-btn:hover{background:var(--ink);color:var(--paper-3);}
+  .admin-btn.danger{border-color:var(--red);color:var(--red);background:rgba(223,74,52,0.08);}
+  .admin-btn.danger:hover{background:var(--red);color:#fff;}
+
+  .challenge-list{display:grid;gap:12px;margin-top:16px;}
+  .challenge-row{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+    padding:14px 16px;border:1px solid var(--line);border-radius:var(--radius);background:#fff;
+  }
+  .challenge-row .cr-name{font-weight:600;}
+  .challenge-row .cr-dates{font-size:13px;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;}
 
   .detail-panel{
     display:none;
@@ -53,6 +63,9 @@
     text-align:left;padding:8px;border-bottom:1px solid var(--line);
   }
   .checkin-history-table th{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;color:var(--ink-soft);}
+
+  .assign-cell select{font-size:12px;padding:4px 8px;border-radius:var(--radius);border:1.5px solid var(--line);}
+  .lb-preview{max-height:240px;overflow:auto;border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:#fff;}
 </style>
 </head>
 <body>
@@ -76,23 +89,36 @@
   <section style="padding:36px 0;">
     <div class="sec-head">
       <div class="sec-eyebrow">Organiser Panel</div>
-      <h2>Entrant Management</h2>
+      <h2>Challenge Management</h2>
     </div>
 
     <div class="card" style="margin-bottom:28px;">
-      <h3 style="font-size:20px;margin-bottom:16px;">Challenge Settings</h3>
+      <h3 style="font-size:20px;margin-bottom:16px;">Create New Cohort</h3>
       <div class="two-col">
         <div class="form-row">
-          <label for="startAtInput">Start date &amp; time (local time)</label>
-          <input type="datetime-local" id="startAtInput">
-          <p class="hint">Participants cannot submit check-ins before this time. Admins can still edit.</p>
+          <label for="challengeName">Challenge name</label>
+          <input type="text" id="challengeName" placeholder="e.g. Summer 2026 Cohort">
         </div>
-        <div class="form-row" style="display:flex;align-items:flex-end;">
-          <button type="button" class="submit-btn" id="saveSettingsBtn" onclick="saveSettings()" style="width:auto;padding:14px 24px;">Save Start Date</button>
+        <div class="form-row">
+          <label for="challengeStart">Start date (Monday)</label>
+          <input type="datetime-local" id="challengeStart">
+          <p class="hint">Baseline opens automatically 48 hours before this. Challenge runs 8 weeks.</p>
         </div>
       </div>
-      <div class="msg" id="settingsMsg"></div>
-      <p class="hint" id="currentStartDisplay" style="margin-top:8px;">Loading current start date...</p>
+      <div class="form-row" style="margin-top:12px;">
+        <button type="button" class="submit-btn" id="createChallengeBtn" onclick="createChallenge()" style="width:auto;padding:14px 24px;">Create Cohort</button>
+      </div>
+      <div class="msg" id="challengeMsg"></div>
+
+      <h3 style="font-size:18px;margin:24px 0 0;">Existing Cohorts</h3>
+      <div class="challenge-list" id="challengeList">
+        <div class="loading">Loading cohorts...</div>
+      </div>
+    </div>
+
+    <div class="sec-head" style="margin-top:48px;">
+      <div class="sec-eyebrow">Entrant Management</div>
+      <h2>Participants</h2>
     </div>
 
     <div class="admin-bar">
@@ -102,6 +128,10 @@
           <option value="all">All payment statuses</option>
           <option value="unpaid">Unpaid only</option>
           <option value="paid">Paid only</option>
+        </select>
+        <select id="filterChallenge" onchange="renderTable()">
+          <option value="all">All cohorts</option>
+          <option value="unassigned">Unassigned</option>
         </select>
       </div>
       <div class="admin-actions">
@@ -132,105 +162,60 @@
   const client = window.sb;
   let allProfiles = [];
   let allCheckins = [];
+  let allChallenges = [];
 
   function showMsg(el, text, type){
     el.textContent = text;
     el.className = 'msg show ' + type;
   }
 
-  function toLocalInputValue(isoString){
-    const d = new Date(isoString);
-    const tzOffset = d.getTimezoneOffset() * 60000;
-    const local = new Date(d.getTime() - tzOffset);
-    return local.toISOString().slice(0, 16);
+  function fmtDate(iso){
+    if(!iso) return '—';
+    return new Date(iso).toLocaleString(undefined, { weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
   }
 
-  async function loadSettings(){
-    const input = document.getElementById('startAtInput');
-    const display = document.getElementById('currentStartDisplay');
-    try{
-      const { data, error } = await client.from('challenge_settings').select('*').single();
-      if(error) throw error;
-      if(data && data.start_at){
-        input.value = toLocalInputValue(data.start_at);
-        display.textContent = 'Current start: ' + new Date(data.start_at).toLocaleString();
-      } else {
-        input.value = '';
-        display.textContent = 'No start date set yet. Participants will see a locked dashboard until you set one.';
-      }
-    } catch(err){
-      console.error('Settings load error:', err);
-      display.textContent = 'Could not load current start date.';
-    }
+  function challengeSelectOptions(selectedId){
+    let html = '<option value="">Unassigned</option>';
+    allChallenges.forEach(function(c){
+      html += '<option value="' + escapeHtml(c.id) + '"' + (c.id === selectedId ? ' selected' : '') + '>' +
+        escapeHtml(c.name || 'Unnamed') + ' · ' + fmtDate(c.starts_at) + '</option>';
+    });
+    return html;
   }
 
-  async function saveSettings(){
-    const btn = document.getElementById('saveSettingsBtn');
-    const msg = document.getElementById('settingsMsg');
-    const input = document.getElementById('startAtInput');
-    msg.className = 'msg';
-
-    if(!input.value){
-      showMsg(msg, 'Please pick a start date and time.', 'error');
-      return;
-    }
-
-    const startAt = new Date(input.value).toISOString();
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-
-    try{
-      // Try update first — the row should always exist after seeding.
-      let { data, error } = await client
-        .from('challenge_settings')
-        .update({ start_at: startAt, updated_at: new Date().toISOString() })
-        .eq('id', 1)
-        .select();
-
-      // If no row was updated (table empty), insert it.
-      if(!error && (!data || data.length === 0)){
-        const insertResult = await client
-          .from('challenge_settings')
-          .insert({ id: 1, start_at: startAt, updated_at: new Date().toISOString() });
-        error = insertResult.error;
-      }
-
-      if(error) throw error;
-      showMsg(msg, 'Start date saved. Participant dashboards will unlock at that time.', 'success');
-      await loadSettings();
-    } catch(err){
-      console.error(err);
-      showMsg(msg, err.message || 'Could not save start date.', 'error');
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Save Start Date';
-    }
+  function getChallengeName(id){
+    const c = allChallenges.find(function(x){ return x.id === id; });
+    return c ? (c.name || 'Unnamed') : 'Unassigned';
   }
 
   async function init(){
     const { user, profile } = await window.auth.requireAdmin();
     if(!user) return;
     document.getElementById('adminName').textContent = profile.full_name || 'Admin';
-    await loadSettings();
     await loadData();
   }
 
   async function loadData(){
-    const container = document.getElementById('adminContent');
-    container.innerHTML = '<div class="loading">Loading entrants...</div>';
+    document.getElementById('adminContent').innerHTML = '<div class="loading">Loading entrants...</div>';
+    document.getElementById('challengeList').innerHTML = '<div class="loading">Loading cohorts...</div>';
 
     try{
-      const [profilesRes, checkinsRes] = await Promise.all([
+      const [profilesRes, checkinsRes, challengesRes] = await Promise.all([
         client.from('profiles').select('*').order('created_at', { ascending: false }),
-        client.from('checkins').select('*').order('week', { ascending: true })
+        client.from('checkins').select('*').order('week', { ascending: true }),
+        client.from('challenges').select('*').order('starts_at', { ascending: false })
       ]);
 
       if(profilesRes.error) throw profilesRes.error;
       if(checkinsRes.error) throw checkinsRes.error;
+      if(challengesRes.error) throw challengesRes.error;
 
       allProfiles = profilesRes.data || [];
       allCheckins = checkinsRes.data || [];
+      allChallenges = challengesRes.data || [];
 
+      populateChallengeFilter();
+      renderChallengeList();
       renderTable();
     } catch(err){
       console.error(err);
@@ -238,8 +223,141 @@
     }
   }
 
-  function getCheckinsForUser(userId){
-    return allCheckins.filter(function(c){ return c.user_id === userId; });
+  function populateChallengeFilter(){
+    const sel = document.getElementById('filterChallenge');
+    // Keep the first two options, then rebuild the rest.
+    sel.innerHTML = '<option value="all">All cohorts</option><option value="unassigned">Unassigned</option>';
+    allChallenges.forEach(function(c){
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = (c.name || 'Unnamed') + ' · ' + fmtDate(c.starts_at);
+      sel.appendChild(opt);
+    });
+  }
+
+  async function createChallenge(){
+    const btn = document.getElementById('createChallengeBtn');
+    const msg = document.getElementById('challengeMsg');
+    const nameInput = document.getElementById('challengeName');
+    const startInput = document.getElementById('challengeStart');
+    msg.className = 'msg';
+
+    const name = nameInput.value.trim();
+    if(!name){
+      showMsg(msg, 'Please enter a challenge name.', 'error');
+      return;
+    }
+    if(!startInput.value){
+      showMsg(msg, 'Please pick a Monday start date and time.', 'error');
+      return;
+    }
+
+    const start = new Date(startInput.value);
+    // Encourage Monday starts. We don't block other days, but warn.
+    if(start.getDay() !== 1){
+      if(!confirm('This start date is not a Monday. The challenge is designed to start on Mondays so the baseline window falls on the weekend. Continue anyway?')){
+        return;
+      }
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Creating...';
+
+    try{
+      const { data, error } = await client
+        .from('challenges')
+        .insert({ name: name, starts_at: start.toISOString(), active: true, locked: false })
+        .select()
+        .single();
+      if(error) throw error;
+
+      showMsg(msg, 'Cohort created. Baseline opens at ' + fmtDate(data.baseline_opens_at) + '.', 'success');
+      nameInput.value = '';
+      startInput.value = '';
+      await loadData();
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Could not create cohort.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Create Cohort';
+    }
+  }
+
+  async function toggleChallengeLock(id, locked){
+    try{
+      const { error } = await client.from('challenges').update({ locked: locked }).eq('id', id);
+      if(error) throw error;
+      await loadData();
+    } catch(err){
+      alert('Could not update cohort: ' + err.message);
+    }
+  }
+
+  async function archiveChallenge(id){
+    if(!confirm('Lock and archive this cohort? No more check-ins can be submitted, and the leaderboard will be frozen.')) return;
+    await toggleChallengeLock(id, true);
+  }
+
+  async function deleteChallenge(id){
+    if(!confirm('Delete this cohort? Participants assigned to it will become unassigned. This cannot be undone.')) return;
+    try{
+      const { error } = await client.from('challenges').delete().eq('id', id);
+      if(error) throw error;
+      await loadData();
+    } catch(err){
+      alert('Could not delete cohort: ' + err.message);
+    }
+  }
+
+  function renderChallengeList(){
+    const container = document.getElementById('challengeList');
+    if(!allChallenges.length){
+      container.innerHTML = '<p style="color:var(--ink-soft);font-size:14px;">No cohorts yet. Create one above.</p>';
+      return;
+    }
+
+    let html = '';
+    allChallenges.forEach(function(c){
+      const status = c.locked ? 'Archived' : 'Active';
+      const statusClass = c.locked ? 'tag tag-unpaid' : 'tag tag-paid';
+      html += '<div class="challenge-row">' +
+        '<div>' +
+          '<div class="cr-name">' + escapeHtml(c.name || 'Unnamed') + ' <span class="' + statusClass + '">' + status + '</span></div>' +
+          '<div class="cr-dates">Baseline ' + fmtDate(c.baseline_opens_at) + ' · Start ' + fmtDate(c.starts_at) + ' · End ' + fmtDate(c.ends_at) + '</div>' +
+        '</div>' +
+        '<div class="admin-actions">' +
+          '<button class="admin-btn" onclick="viewLeaderboardPreview(\'' + c.id + '\')">Leaderboard</button>' +
+          (c.locked
+            ? '<button class="admin-btn" onclick="toggleChallengeLock(\'' + c.id + '\', false)">Unlock</button>'
+            : '<button class="admin-btn danger" onclick="archiveChallenge(\'' + c.id + '\')">Lock / Archive</button>') +
+          '<button class="admin-btn danger" onclick="deleteChallenge(\'' + c.id + '\')">Delete</button>' +
+        '</div>' +
+      '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function viewLeaderboardPreview(challengeId){
+    const c = allChallenges.find(function(x){ return x.id === challengeId; });
+    const title = c ? (c.name || 'Cohort') : 'Cohort';
+    const panel = document.createElement('div');
+    panel.className = 'card';
+    panel.style.marginBottom = '28px';
+    panel.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">' +
+      '<h3 style="font-size:20px;margin:0;">' + escapeHtml(title) + ' Leaderboard Preview</h3>' +
+      '<button class="admin-btn" onclick="this.closest(\'.card\').remove()">Close</button>' +
+    '</div>' +
+    '<div class="lb-preview" id="lb-preview-' + challengeId + '"><div class="loading">Loading...</div></div>';
+    const adminBar = document.querySelector('.admin-bar');
+    adminBar.parentNode.insertBefore(panel, adminBar);
+    window.leaderboard.load('lb-preview-' + challengeId, null, challengeId);
+  }
+
+  function getCheckinsForUser(userId, challengeId){
+    return allCheckins.filter(function(c){
+      return c.user_id === userId && (!challengeId || c.challenge_id === challengeId);
+    });
   }
 
   function computeMetrics(checkins){
@@ -254,7 +372,6 @@
     const weeksLogged = checkins.filter(function(c){ return c.week > 0; }).length;
     const verified = checkins.filter(function(c){ return [0,4,8].includes(c.week) && c.photo_path; }).length;
 
-    // Safety flag: >3% loss in one week.
     let safetyFlag = false;
     for(let i = 1; i <= 8; i++){
       if(map[i] && map[i-1] && map[i-1].weight_kg > 0){
@@ -270,6 +387,7 @@
     const container = document.getElementById('adminContent');
     const search = document.getElementById('searchInput').value.toLowerCase();
     const paidFilter = document.getElementById('filterPaid').value;
+    const challengeFilter = document.getElementById('filterChallenge').value;
 
     const filtered = allProfiles.filter(function(p){
       const matchesSearch = !search ||
@@ -278,7 +396,10 @@
       const matchesPaid = paidFilter === 'all' ||
         (paidFilter === 'paid' && p.paid) ||
         (paidFilter === 'unpaid' && !p.paid);
-      return matchesSearch && matchesPaid;
+      const matchesChallenge = challengeFilter === 'all' ||
+        (challengeFilter === 'unassigned' && !p.challenge_id) ||
+        p.challenge_id === challengeFilter;
+      return matchesSearch && matchesPaid && matchesChallenge;
     });
 
     if(!filtered.length){
@@ -291,6 +412,7 @@
         '<th>Name</th>' +
         '<th>Tier</th>' +
         '<th>Paid</th>' +
+        '<th>Cohort</th>' +
         '<th>Start (kg)</th>' +
         '<th>Latest (kg)</th>' +
         '<th>% Lost</th>' +
@@ -301,14 +423,18 @@
       '</tr></thead><tbody>';
 
     filtered.forEach(function(p){
-      const checkins = getCheckinsForUser(p.id);
+      const checkins = getCheckinsForUser(p.id, p.challenge_id);
       const m = computeMetrics(checkins);
       const pctText = m.baseline ? (m.pctLost >= 0 ? '-' : '+') + Math.abs(m.pctLost).toFixed(1) + '%' : '—';
+      const cohortName = getChallengeName(p.challenge_id);
 
       html += '<tr data-id="' + escapeHtml(p.id) + '">' +
         '<td>' + escapeHtml(p.full_name || '—') + '<br><span style="font-size:12px;color:var(--ink-soft);">' + escapeHtml(p.email || '') + '</span></td>' +
         '<td>' + (p.tier === 'f2f' ? 'F2F' : 'Standard') + '</td>' +
         '<td><span class="tag ' + (p.paid ? 'tag-paid' : 'tag-unpaid') + '">' + (p.paid ? 'Paid' : 'Unpaid') + '</span></td>' +
+        '<td class="assign-cell">' +
+          '<select onchange="assignChallenge(\'' + p.id + '\', this.value)">' + challengeSelectOptions(p.challenge_id) + '</select>' +
+        '</td>' +
         '<td>' + (m.baseline ? m.baseline.toFixed(1) : '—') + '</td>' +
         '<td>' + (m.latest ? m.latest.weight_kg.toFixed(1) : '—') + '</td>' +
         '<td style="font-weight:600;">' + pctText + '</td>' +
@@ -321,7 +447,7 @@
         '</td>' +
       '</tr>' +
       '<tr id="detail-' + p.id + '" style="display:none;">' +
-        '<td colspan="10" style="padding:0;border:none;">' +
+        '<td colspan="11" style="padding:0;border:none;">' +
           '<div class="detail-panel" id="panel-' + p.id + '" data-loaded="false"></div>' +
         '</td>' +
       '</tr>';
@@ -329,6 +455,19 @@
 
     html += '</tbody></table>';
     container.innerHTML = html;
+  }
+
+  async function assignChallenge(userId, challengeId){
+    try{
+      const { error } = await client.from('profiles').update({ challenge_id: challengeId || null }).eq('id', userId);
+      if(error) throw error;
+      const p = allProfiles.find(function(x){ return x.id === userId; });
+      if(p) p.challenge_id = challengeId || null;
+      renderTable();
+    } catch(err){
+      alert('Could not assign cohort: ' + err.message);
+      await loadData();
+    }
   }
 
   async function togglePaid(userId, paidStatus){
@@ -361,13 +500,15 @@
 
   async function renderDetails(userId, panel){
     const profile = allProfiles.find(function(p){ return p.id === userId; });
-    const checkins = getCheckinsForUser(userId);
+    const checkins = getCheckinsForUser(userId, profile.challenge_id);
     const m = computeMetrics(checkins);
+    const cohortName = getChallengeName(profile.challenge_id);
 
     let html = '<div class="detail-grid">' +
       '<div class="detail-item"><div class="di-label">Email</div><div class="di-value">' + escapeHtml(profile.email || '—') + '</div></div>' +
       '<div class="detail-item"><div class="di-label">Phone</div><div class="di-value">' + escapeHtml(profile.phone || '—') + '</div></div>' +
       '<div class="detail-item"><div class="di-label">Tier</div><div class="di-value">' + (profile.tier === 'f2f' ? 'Face-to-Face' : 'Standard') + '</div></div>' +
+      '<div class="detail-item"><div class="di-label">Cohort</div><div class="di-value">' + escapeHtml(cohortName) + '</div></div>' +
       '<div class="detail-item"><div class="di-label">Joined</div><div class="di-value">' + (profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '—') + '</div></div>' +
       '<div class="detail-item"><div class="di-label">Baseline (kg)</div><div class="di-value">' + (m.baseline ? m.baseline.toFixed(1) : '—') + '</div></div>' +
       '<div class="detail-item"><div class="di-label">Latest (kg)</div><div class="di-value">' + (m.latest ? m.latest.weight_kg.toFixed(1) : '—') + '</div></div>' +
@@ -424,10 +565,10 @@
 
   function exportCsv(){
     const rows = [];
-    rows.push(['Name','Email','Phone','Age','Tier','Paid','Starting kg','Latest kg','% Lost','Weeks Logged','Verified Weigh-ins','Safety Flag']);
+    rows.push(['Name','Email','Phone','Age','Tier','Paid','Cohort','Starting kg','Latest kg','% Lost','Weeks Logged','Verified Weigh-ins','Safety Flag']);
 
     allProfiles.forEach(function(p){
-      const checkins = getCheckinsForUser(p.id);
+      const checkins = getCheckinsForUser(p.id, p.challenge_id);
       const m = computeMetrics(checkins);
       const pctText = m.baseline ? m.pctLost.toFixed(2) : '';
       rows.push([
@@ -437,6 +578,7 @@
         p.age || '',
         p.tier || '',
         p.paid ? 'Yes' : 'No',
+        getChallengeName(p.challenge_id),
         m.baseline ? m.baseline.toFixed(1) : '',
         m.latest ? m.latest.weight_kg.toFixed(1) : '',
         pctText,
