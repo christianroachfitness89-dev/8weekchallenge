@@ -79,6 +79,22 @@
       <h2>Entrant Management</h2>
     </div>
 
+    <div class="card" style="margin-bottom:28px;">
+      <h3 style="font-size:20px;margin-bottom:16px;">Challenge Settings</h3>
+      <div class="two-col">
+        <div class="form-row">
+          <label for="startAtInput">Start date &amp; time (local time)</label>
+          <input type="datetime-local" id="startAtInput">
+          <p class="hint">Participants cannot submit check-ins before this time. Admins can still edit.</p>
+        </div>
+        <div class="form-row" style="display:flex;align-items:flex-end;">
+          <button type="button" class="submit-btn" id="saveSettingsBtn" onclick="saveSettings()" style="width:auto;padding:14px 24px;">Save Start Date</button>
+        </div>
+      </div>
+      <div class="msg" id="settingsMsg"></div>
+      <p class="hint" id="currentStartDisplay" style="margin-top:8px;">Loading current start date...</p>
+    </div>
+
     <div class="admin-bar">
       <div class="filter-row">
         <input type="text" id="searchInput" placeholder="Search name or email..." oninput="renderTable()">
@@ -117,10 +133,74 @@
   let allProfiles = [];
   let allCheckins = [];
 
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  function toLocalInputValue(isoString){
+    const d = new Date(isoString);
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    const local = new Date(d.getTime() - tzOffset);
+    return local.toISOString().slice(0, 16);
+  }
+
+  async function loadSettings(){
+    const input = document.getElementById('startAtInput');
+    const display = document.getElementById('currentStartDisplay');
+    try{
+      const { data, error } = await client.from('challenge_settings').select('*').single();
+      if(error) throw error;
+      if(data && data.start_at){
+        input.value = toLocalInputValue(data.start_at);
+        display.textContent = 'Current start: ' + new Date(data.start_at).toLocaleString();
+      } else {
+        input.value = '';
+        display.textContent = 'No start date set yet. Participants will see a locked dashboard until you set one.';
+      }
+    } catch(err){
+      console.error('Settings load error:', err);
+      display.textContent = 'Could not load current start date.';
+    }
+  }
+
+  async function saveSettings(){
+    const btn = document.getElementById('saveSettingsBtn');
+    const msg = document.getElementById('settingsMsg');
+    const input = document.getElementById('startAtInput');
+    msg.className = 'msg';
+
+    if(!input.value){
+      showMsg(msg, 'Please pick a start date and time.', 'error');
+      return;
+    }
+
+    const startAt = new Date(input.value).toISOString();
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try{
+      const { error } = await client.from('challenge_settings').upsert(
+        { id: 1, start_at: startAt, updated_at: new Date().toISOString() },
+        { onConflict: 'id' }
+      );
+      if(error) throw error;
+      showMsg(msg, 'Start date saved. Participant dashboards will unlock at that time.', 'success');
+      await loadSettings();
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Could not save start date.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Start Date';
+    }
+  }
+
   async function init(){
     const { user, profile } = await window.auth.requireAdmin();
     if(!user) return;
     document.getElementById('adminName').textContent = profile.full_name || 'Admin';
+    await loadSettings();
     await loadData();
   }
 

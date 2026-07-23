@@ -39,6 +39,13 @@
       <a href="index.html" class="btn-ghost">Back to home</a>
     </div>
 
+    <!-- Challenge not started notice -->
+    <div class="card hidden" id="challengeNotice" style="margin-bottom:24px;border-color:var(--yellow);">
+      <h3 style="font-size:20px;">Challenge not open yet</h3>
+      <p id="challengeNoticeText">The challenge start date has not been set. Please check back soon.</p>
+      <a href="index.html" class="btn-ghost">Back to home</a>
+    </div>
+
     <!-- Paid dashboard -->
     <div id="dashboardContent" class="hidden">
       <div class="dashboard-grid">
@@ -207,12 +214,37 @@
       return;
     }
 
+    // Load challenge settings to enforce the start date.
+    const { data: settings, error: settingsError } = await client
+      .from('challenge_settings')
+      .select('*')
+      .single();
+
+    if(settingsError || !settings || !settings.start_at){
+      document.getElementById('challengeNotice').classList.remove('hidden');
+      if(settings && !settings.start_at){
+        document.getElementById('challengeNoticeText').textContent = 'The challenge start date has not been set by the organiser yet. Please check back soon.';
+      } else if(settingsError){
+        document.getElementById('challengeNoticeText').textContent = 'Could not load challenge settings. Please try again later.';
+      }
+      return;
+    }
+
+    const startAt = new Date(settings.start_at);
+    const now = new Date();
+    if(now < startAt){
+      document.getElementById('challengeNotice').classList.remove('hidden');
+      document.getElementById('challengeNoticeText').innerHTML =
+        'The challenge starts on <strong>' + startAt.toLocaleString() + '</strong>. Check-ins will open then.';
+      return;
+    }
+
     document.getElementById('dashboardContent').classList.remove('hidden');
 
-    // Default week selection to current week if known, else Week 1.
+    // Default week selection to current week since the challenge started.
     const today = new Date();
-    const startDate = profile.created_at ? new Date(profile.created_at) : today;
-    const diffDays = Math.floor((today - startDate) / (1000 * 60 * 60 * 24));
+    const diffMs = today - startAt;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const suggestedWeek = Math.min(8, Math.max(1, Math.floor(diffDays / 7)));
     document.getElementById('ciWeek').value = suggestedWeek.toString();
 
@@ -264,10 +296,39 @@
     }
   }
 
+  function setCheckinEditable(editable, message){
+    const fields = [
+      'ciWeight','ciWorkouts','ciEnergy','ciAdherence','ciNotes','ciPhoto','ciWeek'
+    ];
+    fields.forEach(function(id){
+      const el = document.getElementById(id);
+      if(el) el.disabled = !editable;
+    });
+    const btn = document.getElementById('ciSubmitBtn');
+    btn.disabled = !editable;
+    btn.textContent = editable ? 'Save Check-In' : 'Already Submitted';
+
+    const lockedMsg = document.getElementById('ciLockedMsg');
+    if(!editable){
+      if(!lockedMsg){
+        const msgDiv = document.createElement('div');
+        msgDiv.id = 'ciLockedMsg';
+        msgDiv.className = 'msg show info';
+        btn.parentNode.insertBefore(msgDiv, btn.nextSibling);
+      }
+      lockedMsg = document.getElementById('ciLockedMsg');
+      lockedMsg.textContent = message || 'This week has already been submitted and cannot be edited.';
+    } else if(lockedMsg){
+      lockedMsg.remove();
+    }
+  }
+
   function loadWeekData(){
     const week = parseInt(document.getElementById('ciWeek').value, 10);
     const existing = currentCheckins[week];
     const photoRow = document.getElementById('photoRow');
+    const msg = document.getElementById('ciMsg');
+    if(msg) msg.className = 'msg';
 
     if(week === 0 || week === 4 || week === 8){
       photoRow.classList.remove('hidden');
@@ -281,14 +342,15 @@
       document.getElementById('ciEnergy').value = existing.energy_rating || '';
       document.getElementById('ciAdherence').value = existing.adherence_rating || '';
       document.getElementById('ciNotes').value = existing.notes || '';
-      document.getElementById('ciSubmitBtn').textContent = 'Update Check-In';
+      setCheckinEditable(false, 'Week ' + week + ' has already been submitted. Contact the organiser if you need to make a change.');
     } else {
       document.getElementById('ciWeight').value = '';
       document.getElementById('ciWorkouts').value = '0';
       document.getElementById('ciEnergy').value = '';
       document.getElementById('ciAdherence').value = '';
       document.getElementById('ciNotes').value = '';
-      document.getElementById('ciSubmitBtn').textContent = 'Save Check-In';
+      document.getElementById('ciPhoto').value = '';
+      setCheckinEditable(true);
     }
   }
 
@@ -318,6 +380,11 @@
     const notes = document.getElementById('ciNotes').value.trim();
     const photoFile = document.getElementById('ciPhoto').files[0];
 
+    if(currentCheckins[week]){
+      showMsg(msg, 'Week ' + week + ' has already been submitted and cannot be edited.', 'error');
+      return;
+    }
+
     if(isNaN(weight) || weight < 30 || weight > 300){
       showMsg(msg, 'Please enter a realistic weight in kg (30–300).', 'error');
       return;
@@ -327,7 +394,7 @@
     btn.textContent = 'Saving...';
 
     try{
-      let photoPath = currentCheckins[week]?.photo_path || null;
+      let photoPath = null;
 
       if(photoFile){
         photoPath = await uploadPhoto(photoFile, week);
@@ -354,7 +421,7 @@
         photo_path: photoPath
       };
 
-      const { error } = await client.from('checkins').upsert(payload, { onConflict: 'user_id,week' });
+      const { error } = await client.from('checkins').insert(payload);
       if(error) throw error;
 
       showMsg(msg, 'Check-in saved for Week ' + week + '.', 'success');

@@ -1,6 +1,18 @@
 -- 8-Week Challenge — Supabase schema setup
 -- Run this in the Supabase SQL Editor after creating your project.
 
+-- ---------- helper function: is the current user an admin? ----------
+-- This is defined early so all RLS policies can reference it without recursion.
+
+create or replace function public.is_admin(user_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce((select is_admin from public.profiles where id = user_id), false);
+$$;
+
 -- ---------- tables ----------
 
 create table if not exists public.profiles (
@@ -30,6 +42,16 @@ create table if not exists public.checkins (
   unique(user_id, week)
 );
 
+create table if not exists public.challenge_settings (
+  id integer primary key default 1 check (id = 1),
+  start_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+-- Seed the single settings row. Leave start_at NULL until the organiser sets it.
+insert into public.challenge_settings (id, start_at) values (1, null)
+on conflict (id) do nothing;
+
 -- ---------- indexes ----------
 
 create index if not exists idx_checkins_user_id on public.checkins(user_id);
@@ -39,8 +61,12 @@ create index if not exists idx_checkins_week on public.checkins(week);
 
 alter table public.profiles enable row level security;
 alter table public.checkins enable row level security;
+alter table public.challenge_settings enable row level security;
 
 -- ---------- profile policies ----------
+
+-- Drop old recursive policies in case this is being run on an existing project.
+drop policy if exists "Admins can manage profiles" on public.profiles;
 
 -- Users can view their own profile.
 create policy "Users can read own profile"
@@ -62,10 +88,14 @@ create policy "Admins can manage profiles"
   on public.profiles
   for all
   to authenticated
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin = true))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin = true));
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
 
 -- ---------- checkin policies ----------
+
+-- Drop old policies in case this is being run on an existing project.
+drop policy if exists "Users can update own checkins" on public.checkins;
+drop policy if exists "Admins can manage checkins" on public.checkins;
 
 -- Users can view their own check-ins.
 create policy "Users can read own checkins"
@@ -81,24 +111,88 @@ create policy "Users can insert own checkins"
   to authenticated
   with check (auth.uid() = user_id);
 
--- Users can update their own check-ins (e.g. fix a typo the same week).
-create policy "Users can update own checkins"
-  on public.checkins
-  for update
-  to authenticated
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
 -- Admins can do anything with check-ins.
 create policy "Admins can manage checkins"
   on public.checkins
   for all
   to authenticated
-  using (exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin = true))
-  with check (exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin = true));
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
+
+-- ---------- challenge settings policies ----------
+
+create policy "Authenticated users can read challenge settings"
+  on public.challenge_settings
+  for select
+  to authenticated
+  using (true);
+
+create policy "Admins can update challenge settings"
+  on public.challenge_settings
+  for update
+  to authenticated
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
+
+-- ---------- trigger: prevent participants editing submitted check-ins ----------
+
+create or replace function public.prevent_checkin_edit()
+returns trigger as $$
+declare
+  claims json;
+  role text;
+begin
+  claims := coalesce(current_setting('request.jwt.claims', true), '{}')::json;
+  role := claims->>'role';
+
+  -- Allow admins and service-role connections to edit.
+  if role = 'service_role' or public.is_admin(auth.uid()) then
+    return new;
+  end if;
+
+  raise exception 'Check-ins cannot be edited once submitted. Contact the organiser if you need to make a change.';
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists prevent_checkin_edit on public.checkins;
+create trigger prevent_checkin_edit
+  before update on public.checkins
+  for each row execute function public.prevent_checkin_edit();
+
+-- ---------- trigger: enforce challenge start date ----------
+
+create or replace function public.enforce_challenge_start()
+returns trigger as $$
+declare
+  start_time timestamptz;
+  claims json;
+  role text;
+begin
+  claims := coalesce(current_setting('request.jwt.claims', true), '{}')::json;
+  role := claims->>'role';
+
+  -- Admins and service-role connections can bypass the start lock.
+  if role = 'service_role' or public.is_admin(auth.uid()) then
+    return new;
+  end if;
+
+  select start_at into start_time from public.challenge_settings where id = 1;
+
+  if start_time is not null and now() < start_time then
+    raise exception 'Challenge has not started yet. Check-ins open at %.', start_time;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists enforce_challenge_start on public.checkins;
+create trigger enforce_challenge_start
+  before insert or update on public.checkins
+  for each row execute function public.enforce_challenge_start();
 
 -- ---------- trigger: auto-create profile on signup ----------
--- This is a safety net in case client-side profile insertion fails.
+-- This is a safety net in case client-side profile upsert fails.
 
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -187,8 +281,11 @@ begin
       else regexp_replace(p.full_name, '^([^ ]+).*', '\1') || ' ' || left(coalesce(split_part(p.full_name, ' ', 2), ''), 1)
     end as display_name,
     case
-      when b.baseline_weight is null or b.baseline_weight = 0 or l.latest_weight is null then 0
-      else ((b.baseline_weight - l.latest_weight) / b.baseline_weight) * 100
+      when coalesce(b.baseline_weight, p.starting_weight_kg) is null
+           or coalesce(b.baseline_weight, p.starting_weight_kg) = 0
+           or l.latest_weight is null then 0
+      else ((coalesce(b.baseline_weight, p.starting_weight_kg) - l.latest_weight)
+            / coalesce(b.baseline_weight, p.starting_weight_kg)) * 100
     end as pct_lost,
     coalesce(c.weeks_logged, 0) as weeks_logged,
     coalesce(c.verified_weigh_ins, 0) as verified_weigh_ins
@@ -211,6 +308,9 @@ insert into storage.buckets (id, name, public)
 values ('weighin-photos', 'weighin-photos', false)
 on conflict (id) do nothing;
 
+-- Drop old recursive storage policy in case this is being run on an existing project.
+drop policy if exists "Admins can read all weighin photos" on storage.objects;
+
 -- Users can upload/view their own weigh-in photos.
 create policy "Users can upload own weighin photos"
   on storage.objects
@@ -230,8 +330,7 @@ create policy "Admins can read all weighin photos"
   for select
   to authenticated
   using (
-    bucket_id = 'weighin-photos' and
-    exists (select 1 from public.profiles p where p.id = auth.uid() and p.is_admin = true)
+    bucket_id = 'weighin-photos' and public.is_admin(auth.uid())
   );
 
 -- ---------- initial admin setup ----------
