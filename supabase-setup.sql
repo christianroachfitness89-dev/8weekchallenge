@@ -521,16 +521,45 @@ create table if not exists public.competition_settings (
   subheadline text not null default 'An elite 8-week accountability experience.',
   eyebrow text not null default 'Private Coaching Challenge · 8 Weeks · Track in KG',
   intro_video_url text,
+  prize_type text not null default 'cash' check (prize_type in ('cash', 'physical', 'both')),
   prize_pool numeric not null default 2000,
+  prize_first_cash numeric not null default 1000,
+  prize_second_cash numeric not null default 600,
+  prize_third_cash numeric not null default 400,
+  prize_first_text text,
+  prize_second_text text,
+  prize_third_text text,
   standard_price numeric not null default 280,
   standard_stripe_link text not null default 'https://buy.stripe.com/28E28s92p1Zy8my6oY5os0x',
   f2f_price numeric not null default 792,
   f2f_stripe_link text not null default 'https://buy.stripe.com/dRmeVebax33C1Ya5kU5os0B'
 );
 
+-- Migration: add per-place cash columns if they don't exist and seed existing rows.
+alter table public.competition_settings
+  add column if not exists prize_first_cash numeric not null default 1000,
+  add column if not exists prize_second_cash numeric not null default 600,
+  add column if not exists prize_third_cash numeric not null default 400;
+
+update public.competition_settings
+set
+  prize_first_cash = coalesce(prize_first_cash, 1000),
+  prize_second_cash = coalesce(prize_second_cash, 600),
+  prize_third_cash = coalesce(prize_third_cash, 400)
+where id = 1;
+
+-- Allow 'both' as a prize display mode and keep existing rows as 'cash'.
+alter table public.competition_settings
+  drop constraint if exists competition_settings_prize_type_check;
+
+alter table public.competition_settings
+  add constraint competition_settings_prize_type_check
+  check (prize_type in ('cash', 'physical', 'both'));
+
 alter table public.competition_settings enable row level security;
 
 drop policy if exists "Anyone can read competition settings" on public.competition_settings;
+drop policy if exists "Anyone can read competition settings authenticated" on public.competition_settings;
 drop policy if exists "Admins can manage competition settings" on public.competition_settings;
 
 create policy "Anyone can read competition settings"
