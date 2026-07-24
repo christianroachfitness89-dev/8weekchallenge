@@ -893,29 +893,29 @@
     panel.style.display = 'block';
 
     try{
-      const settings = await window.siteSettings.loadChallenge(challengeId);
+      const settings = await window.siteSettings.load(challengeId);
       panel.innerHTML = makeSettingsMarkup(prefix, challengeId);
       panel.dataset.loaded = '1';
 
       function setVal(id, val){ const el = document.getElementById(id); if(el) el.value = (val === undefined || val === null) ? '' : val; }
-      setVal(prefix + 'Name', settings.challenge_name);
-      setVal(prefix + 'Eyebrow', settings.eyebrow);
-      setVal(prefix + 'Headline', settings.headline);
-      setVal(prefix + 'Sub', settings.subheadline);
-      setVal(prefix + 'Video', settings.intro_video_url);
-      setVal(prefix + 'PrizeType', settings.prize_type || '');
-      setVal(prefix + 'PrizeHeroLabel', settings.prize_hero_label);
-      setVal(prefix + 'PrizeHeroAmount', settings.prize_hero_amount);
-      setVal(prefix + 'PrizeFirstCash', settings.prize_first_cash);
-      setVal(prefix + 'PrizeSecondCash', settings.prize_second_cash);
-      setVal(prefix + 'PrizeThirdCash', settings.prize_third_cash);
-      setVal(prefix + 'PrizeFirstText', settings.prize_first_text);
-      setVal(prefix + 'PrizeSecondText', settings.prize_second_text);
-      setVal(prefix + 'PrizeThirdText', settings.prize_third_text);
-      setVal(prefix + 'StandardPrice', settings.standard_price);
-      setVal(prefix + 'StandardLink', settings.standard_stripe_link);
-      setVal(prefix + 'F2FPrice', settings.f2f_price);
-      setVal(prefix + 'F2FLink', settings.f2f_stripe_link);
+      setVal(prefix + 'Name', settings?.challenge_name);
+      setVal(prefix + 'Eyebrow', settings?.eyebrow);
+      setVal(prefix + 'Headline', settings?.headline);
+      setVal(prefix + 'Sub', settings?.subheadline);
+      setVal(prefix + 'Video', settings?.intro_video_url);
+      setVal(prefix + 'PrizeType', settings?.prize_type || '');
+      setVal(prefix + 'PrizeHeroLabel', settings?.prize_hero_label);
+      setVal(prefix + 'PrizeHeroAmount', settings?.prize_hero_amount);
+      setVal(prefix + 'PrizeFirstCash', settings?.prize_first_cash);
+      setVal(prefix + 'PrizeSecondCash', settings?.prize_second_cash);
+      setVal(prefix + 'PrizeThirdCash', settings?.prize_third_cash);
+      setVal(prefix + 'PrizeFirstText', settings?.prize_first_text);
+      setVal(prefix + 'PrizeSecondText', settings?.prize_second_text);
+      setVal(prefix + 'PrizeThirdText', settings?.prize_third_text);
+      setVal(prefix + 'StandardPrice', settings?.standard_price);
+      setVal(prefix + 'StandardLink', settings?.standard_stripe_link);
+      setVal(prefix + 'F2FPrice', settings?.f2f_price);
+      setVal(prefix + 'F2FLink', settings?.f2f_stripe_link);
       updateEditPrizeTotal(prefix);
       toggleEditPrizeFields(prefix);
     } catch(err){
