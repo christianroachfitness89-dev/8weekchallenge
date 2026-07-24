@@ -148,6 +148,122 @@
           <p class="hint">Baseline opens automatically 48 hours before this. Challenge runs 8 weeks.</p>
         </div>
       </div>
+
+      <div class="form-row" style="margin-top:20px;">
+        <label class="check-row" style="margin:0;">
+          <input type="checkbox" id="useDefaultSettings" checked onchange="toggleCreateSettings()">
+          <span>Use default competition settings for this cohort</span>
+        </label>
+      </div>
+
+      <div id="createSettingsPanel" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid var(--line);">
+        <p class="hint" style="margin-bottom:16px;">Override only the fields you want to change. Leave blank to use the global default.</p>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="ccSetName">Challenge name</label>
+            <input type="text" id="ccSetName" placeholder="Leave blank for default">
+          </div>
+          <div class="form-row">
+            <label for="ccSetEyebrow">Eyebrow text</label>
+            <input type="text" id="ccSetEyebrow" placeholder="Leave blank for default">
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="ccSetHeadline">Hero headline</label>
+          <textarea id="ccSetHeadline" rows="2" placeholder="Leave blank for default"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="ccSetSub">Hero subheadline</label>
+          <textarea id="ccSetSub" rows="3" placeholder="Leave blank for default"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="ccSetVideo">Intro video URL</label>
+          <input type="url" id="ccSetVideo" placeholder="Leave blank for default">
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="ccSetPrizeType">Prize display mode</label>
+            <select id="ccSetPrizeType" onchange="toggleCreatePrizeFields()">
+              <option value="">Use default</option>
+              <option value="cash">Cash prizes only</option>
+              <option value="physical">Physical prizes only</option>
+              <option value="both">Cash + physical prizes</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="ccSetPrizeHeroLabel">Hero prize label</label>
+            <input type="text" id="ccSetPrizeHeroLabel" placeholder="Leave blank for default">
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="ccSetPrizeHeroAmount">Hero prize amount ($)</label>
+            <input type="number" id="ccSetPrizeHeroAmount" min="0" step="1" placeholder="Leave blank for default">
+          </div>
+          <div class="form-row">
+            <label for="ccSetPrizeTotal">Total prize pool</label>
+            <input type="text" id="ccSetPrizeTotal" readonly style="background:var(--paper-3);color:var(--ink-soft);">
+          </div>
+        </div>
+
+        <div id="ccCashPrizeFields">
+          <div class="two-col">
+            <div class="form-row">
+              <label for="ccSetPrizeFirstCash">1st place cash ($)</label>
+              <input type="number" id="ccSetPrizeFirstCash" min="0" step="1" oninput="updateCreatePrizeTotal()" placeholder="Leave blank for default">
+            </div>
+            <div class="form-row">
+              <label for="ccSetPrizeSecondCash">2nd place cash ($)</label>
+              <input type="number" id="ccSetPrizeSecondCash" min="0" step="1" oninput="updateCreatePrizeTotal()" placeholder="Leave blank for default">
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="form-row">
+              <label for="ccSetPrizeThirdCash">3rd place cash ($)</label>
+              <input type="number" id="ccSetPrizeThirdCash" min="0" step="1" oninput="updateCreatePrizeTotal()" placeholder="Leave blank for default">
+            </div>
+          </div>
+        </div>
+
+        <div id="ccPhysicalPrizeFields">
+          <div class="form-row">
+            <label for="ccSetPrizeFirstText">1st place physical prize</label>
+            <input type="text" id="ccSetPrizeFirstText" placeholder="Leave blank for default">
+          </div>
+          <div class="two-col">
+            <div class="form-row">
+              <label for="ccSetPrizeSecondText">2nd place physical prize</label>
+              <input type="text" id="ccSetPrizeSecondText" placeholder="Leave blank for default">
+            </div>
+            <div class="form-row">
+              <label for="ccSetPrizeThirdText">3rd place physical prize</label>
+              <input type="text" id="ccSetPrizeThirdText" placeholder="Leave blank for default">
+            </div>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="form-row">
+            <label for="ccSetStandardPrice">Standard total price ($)</label>
+            <input type="number" id="ccSetStandardPrice" min="0" step="1" placeholder="Leave blank for default">
+          </div>
+          <div class="form-row">
+            <label for="ccSetStandardLink">Standard Stripe payment link</label>
+            <input type="url" id="ccSetStandardLink" placeholder="Leave blank for default">
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="ccSetF2FPrice">Face-to-Face total price ($)</label>
+            <input type="number" id="ccSetF2FPrice" min="0" step="1" placeholder="Leave blank for default">
+          </div>
+          <div class="form-row">
+            <label for="ccSetF2FLink">Face-to-Face Stripe payment link</label>
+            <input type="url" id="ccSetF2FLink" placeholder="Leave blank for default">
+          </div>
+        </div>
+      </div>
+
       <div class="form-row" style="margin-top:12px;">
         <button type="button" class="submit-btn" id="createChallengeBtn" onclick="createChallenge()" style="width:auto;padding:14px 24px;">Create Cohort</button>
       </div>
@@ -465,6 +581,7 @@
       populateChatCohortSelect();
       renderChallengeList();
       renderTable();
+      await loadCreateSettingsDefaults();
     } catch(err){
       console.error(err);
       document.getElementById('adminContent').innerHTML = '<div class="empty">Could not load entrants. ' + escapeHtml(err.message) + '</div>';
@@ -481,6 +598,63 @@
       opt.textContent = (c.name || 'Unnamed') + ' · ' + fmtDate(c.starts_at);
       sel.appendChild(opt);
     });
+  }
+
+  function optionalNumber(id){
+    const el = document.getElementById(id);
+    if(!el || el.value.trim() === '') return null;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? null : v;
+  }
+
+  function optionalString(id){
+    const el = document.getElementById(id);
+    if(!el) return null;
+    const v = el.value.trim();
+    return v === '' ? null : v;
+  }
+
+  function collectCohortSettingsPayload(challengeId){
+    const useDefaults = document.getElementById('useDefaultSettings').checked;
+    if(useDefaults) return null;
+
+    const prizeType = optionalString('ccSetPrizeType');
+    const isCash = prizeType === 'cash' || prizeType === 'both';
+    const firstCash = optionalNumber('ccSetPrizeFirstCash');
+    const secondCash = optionalNumber('ccSetPrizeSecondCash');
+    const thirdCash = optionalNumber('ccSetPrizeThirdCash');
+    const prizePool = isCash ? ((firstCash || 0) + (secondCash || 0) + (thirdCash || 0)) : null;
+
+    const payload = {
+      challenge_id: challengeId,
+      updated_at: new Date().toISOString(),
+      challenge_name: optionalString('ccSetName'),
+      eyebrow: optionalString('ccSetEyebrow'),
+      headline: optionalString('ccSetHeadline'),
+      subheadline: optionalString('ccSetSub'),
+      intro_video_url: optionalString('ccSetVideo'),
+      prize_type: prizeType,
+      prize_pool: prizePool,
+      prize_first_cash: firstCash,
+      prize_second_cash: secondCash,
+      prize_third_cash: thirdCash,
+      prize_hero_label: optionalString('ccSetPrizeHeroLabel'),
+      prize_hero_amount: optionalNumber('ccSetPrizeHeroAmount'),
+      prize_first_text: optionalString('ccSetPrizeFirstText'),
+      prize_second_text: optionalString('ccSetPrizeSecondText'),
+      prize_third_text: optionalString('ccSetPrizeThirdText'),
+      standard_price: optionalNumber('ccSetStandardPrice'),
+      standard_stripe_link: optionalString('ccSetStandardLink'),
+      f2f_price: optionalNumber('ccSetF2FPrice'),
+      f2f_stripe_link: optionalString('ccSetF2FLink')
+    };
+
+    // Remove fully-null keys so they don't overwrite defaults with nulls on upsert.
+    Object.keys(payload).forEach(function(key){
+      if(payload[key] === null) delete payload[key];
+    });
+
+    return Object.keys(payload).length > 1 ? payload : null;
   }
 
   async function createChallenge(){
@@ -519,9 +693,17 @@
         .single();
       if(error) throw error;
 
+      const settingsPayload = collectCohortSettingsPayload(data.id);
+      if(settingsPayload){
+        const { error: settingsError } = await client.from('challenge_settings').upsert(settingsPayload, { onConflict: 'challenge_id' });
+        if(settingsError) throw settingsError;
+      }
+
       showMsg(msg, 'Cohort created. Baseline opens at ' + fmtDate(data.baseline_opens_at) + '.', 'success');
       nameInput.value = '';
       startInput.value = '';
+      document.getElementById('useDefaultSettings').checked = true;
+      toggleCreateSettings();
       await loadData();
     } catch(err){
       console.error(err);
@@ -569,21 +751,229 @@
     allChallenges.forEach(function(c){
       const status = c.locked ? 'Archived' : 'Active';
       const statusClass = c.locked ? 'tag tag-unpaid' : 'tag tag-paid';
-      html += '<div class="challenge-row">' +
-        '<div>' +
-          '<div class="cr-name">' + escapeHtml(c.name || 'Unnamed') + ' <span class="' + statusClass + '">' + status + '</span></div>' +
-          '<div class="cr-dates">Baseline ' + fmtDate(c.baseline_opens_at) + ' · Start ' + fmtDate(c.starts_at) + ' · End ' + fmtDate(c.ends_at) + '</div>' +
+      html += '<div class="challenge-row" style="flex-direction:column;align-items:flex-start;gap:8px;" data-id="' + escapeHtml(c.id) + '">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;width:100%;">' +
+          '<div>' +
+            '<div class="cr-name">' + escapeHtml(c.name || 'Unnamed') + ' <span class="' + statusClass + '">' + status + '</span></div>' +
+            '<div class="cr-dates">Baseline ' + fmtDate(c.baseline_opens_at) + ' · Start ' + fmtDate(c.starts_at) + ' · End ' + fmtDate(c.ends_at) + '</div>' +
+          '</div>' +
+          '<div class="admin-actions">' +
+            '<button class="admin-btn" onclick="viewLeaderboardPreview(\'' + c.id + '\')">Leaderboard</button>' +
+            '<button class="admin-btn" onclick="openChallengeSettings(\'' + c.id + '\')">Settings</button>' +
+            (c.locked
+              ? '<button class="admin-btn" onclick="toggleChallengeLock(\'' + c.id + '\', false)">Unlock</button>'
+              : '<button class="admin-btn danger" onclick="archiveChallenge(\'' + c.id + '\')">Lock / Archive</button>') +
+            '<button class="admin-btn danger" onclick="deleteChallenge(\'' + c.id + '\')">Delete</button>' +
+          '</div>' +
         '</div>' +
-        '<div class="admin-actions">' +
-          '<button class="admin-btn" onclick="viewLeaderboardPreview(\'' + c.id + '\')">Leaderboard</button>' +
-          (c.locked
-            ? '<button class="admin-btn" onclick="toggleChallengeLock(\'' + c.id + '\', false)">Unlock</button>'
-            : '<button class="admin-btn danger" onclick="archiveChallenge(\'' + c.id + '\')">Lock / Archive</button>') +
-          '<button class="admin-btn danger" onclick="deleteChallenge(\'' + c.id + '\')">Delete</button>' +
-        '</div>' +
+        '<div class="challenge-settings-panel" id="settings-panel-' + c.id + '" style="display:none;width:100%;margin-top:12px;"></div>' +
       '</div>';
     });
     container.innerHTML = html;
+  }
+
+  function makeSettingsMarkup(prefix, challengeId){
+    return '<div class="card" style="padding:20px;background:var(--paper-3);border-color:var(--line);">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">' +
+        '<h4 style="margin:0;font-size:18px;">Cohort Settings</h4>' +
+        '<button type="button" class="admin-btn" onclick="closeChallengeSettings(\'' + challengeId + '\')">Close</button>' +
+      '</div>' +
+      '<div class="msg" id="' + prefix + 'Msg"></div>' +
+      '<p class="hint" style="margin-bottom:16px;">Leave any field blank to use the global default. Only fill in what should differ for this cohort.</p>' +
+      '<div class="two-col">' +
+        makeFieldRow(prefix + 'Name', 'Challenge name') +
+        makeFieldRow(prefix + 'Eyebrow', 'Eyebrow text') +
+      '</div>' +
+      makeFieldRow(prefix + 'Headline', 'Hero headline', 'textarea', 2) +
+      makeFieldRow(prefix + 'Sub', 'Hero subheadline', 'textarea', 3) +
+      makeFieldRow(prefix + 'Video', 'Intro video URL', 'url') +
+      '<div class="two-col">' +
+        makeSelectRow(prefix + 'PrizeType', 'Prize display mode', [
+          {value:'', label:'Use default'},
+          {value:'cash', label:'Cash prizes only'},
+          {value:'physical', label:'Physical prizes only'},
+          {value:'both', label:'Cash + physical prizes'}
+        ]) +
+        makeFieldRow(prefix + 'PrizeHeroLabel', 'Hero prize label') +
+      '</div>' +
+      '<div class="two-col">' +
+        makeNumberRow(prefix + 'PrizeHeroAmount', 'Hero prize amount ($)') +
+        makeTotalRow(prefix + 'PrizeTotal', 'Total prize pool') +
+      '</div>' +
+      '<div class="two-col">' +
+        makeNumberRow(prefix + 'PrizeFirstCash', '1st place cash ($)', prefix) +
+        makeNumberRow(prefix + 'PrizeSecondCash', '2nd place cash ($)', prefix) +
+      '</div>' +
+      '<div class="two-col">' +
+        makeNumberRow(prefix + 'PrizeThirdCash', '3rd place cash ($)', prefix) +
+      '</div>' +
+      makeFieldRow(prefix + 'PrizeFirstText', '1st place physical prize') +
+      '<div class="two-col">' +
+        makeFieldRow(prefix + 'PrizeSecondText', '2nd place physical prize') +
+        makeFieldRow(prefix + 'PrizeThirdText', '3rd place physical prize') +
+      '</div>' +
+      '<div class="two-col">' +
+        makeNumberRow(prefix + 'StandardPrice', 'Standard total price ($)') +
+        makeFieldRow(prefix + 'StandardLink', 'Standard Stripe payment link', 'url') +
+      '</div>' +
+      '<div class="two-col">' +
+        makeNumberRow(prefix + 'F2FPrice', 'Face-to-Face total price ($)') +
+        makeFieldRow(prefix + 'F2FLink', 'Face-to-Face Stripe payment link', 'url') +
+      '</div>' +
+      '<div class="form-row" style="margin-top:12px;">' +
+        '<button type="button" class="submit-btn" onclick="saveChallengeSettings(\'' + challengeId + '\', \'' + prefix + '\')" style="width:auto;padding:14px 24px;">Save Cohort Settings</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function makeFieldRow(id, label, type, rows){
+    if(type === 'textarea'){
+      return '<div class="form-row"><label for="' + id + '">' + label + '</label><textarea id="' + id + '" rows="' + rows + '" placeholder="Leave blank for default"></textarea></div>';
+    }
+    return '<div class="form-row"><label for="' + id + '">' + label + '</label><input type="' + (type || 'text') + '" id="' + id + '" placeholder="Leave blank for default"></div>';
+  }
+
+  function makeSelectRow(id, label, options){
+    let opts = '';
+    options.forEach(function(o){ opts += '<option value="' + o.value + '">' + o.label + '</option>'; });
+    return '<div class="form-row"><label for="' + id + '">' + label + '</label><select id="' + id + '" onchange="toggleEditPrizeFields(\'' + id.replace('PrizeType','') + '\')">' + opts + '</select></div>';
+  }
+
+  function makeNumberRow(id, label, prefix){
+    const oninput = prefix ? ' oninput="updateEditPrizeTotal(\'' + prefix + '\')"' : '';
+    return '<div class="form-row"><label for="' + id + '">' + label + '</label><input type="number" id="' + id + '" min="0" step="1" placeholder="Leave blank for default"' + oninput + '></div>';
+  }
+
+  function makeTotalRow(id, label){
+    return '<div class="form-row"><label for="' + id + '">' + label + '</label><input type="text" id="' + id + '" readonly style="background:var(--paper-3);color:var(--ink-soft);"></div>';
+  }
+
+  function toggleEditPrizeFields(prefix){
+    const type = document.getElementById(prefix + 'PrizeType').value;
+    // Unlike create form, edit form shows both blocks but dims the unused one.
+    const cash = document.getElementById(prefix + 'PrizeFirstCash');
+    const firstText = document.getElementById(prefix + 'PrizeFirstText');
+    if(!cash || !firstText) return;
+    const showCash = type === 'cash' || type === 'both';
+    const showPhys = type === 'physical' || type === 'both';
+    [prefix + 'PrizeFirstCash', prefix + 'PrizeSecondCash', prefix + 'PrizeThirdCash', prefix + 'PrizeHeroAmount', prefix + 'PrizeTotal'].forEach(function(id){
+      const el = document.getElementById(id);
+      if(el) el.disabled = !showCash;
+    });
+    [prefix + 'PrizeFirstText', prefix + 'PrizeSecondText', prefix + 'PrizeThirdText'].forEach(function(id){
+      const el = document.getElementById(id);
+      if(el) el.disabled = !showPhys;
+    });
+  }
+
+  function updateEditPrizeTotal(prefix){
+    const first = parseFloat(document.getElementById(prefix + 'PrizeFirstCash')?.value || 0) || 0;
+    const second = parseFloat(document.getElementById(prefix + 'PrizeSecondCash')?.value || 0) || 0;
+    const third = parseFloat(document.getElementById(prefix + 'PrizeThirdCash')?.value || 0) || 0;
+    const total = first + second + third;
+    const totalEl = document.getElementById(prefix + 'PrizeTotal');
+    if(totalEl) totalEl.value = '$' + total.toLocaleString();
+  }
+
+  function closeChallengeSettings(challengeId){
+    const panel = document.getElementById('settings-panel-' + challengeId);
+    if(panel) panel.style.display = 'none';
+  }
+
+  async function openChallengeSettings(challengeId){
+    const panel = document.getElementById('settings-panel-' + challengeId);
+    if(!panel) return;
+    const prefix = 'editSet-' + challengeId + '-';
+    // If markup already injected, just show and bail.
+    if(panel.dataset.loaded === '1'){
+      panel.style.display = 'block';
+      return;
+    }
+    panel.innerHTML = '<div class="loading" style="padding:20px;">Loading settings...</div>';
+    panel.style.display = 'block';
+
+    try{
+      const settings = await window.siteSettings.loadChallenge(challengeId);
+      panel.innerHTML = makeSettingsMarkup(prefix, challengeId);
+      panel.dataset.loaded = '1';
+
+      function setVal(id, val){ const el = document.getElementById(id); if(el) el.value = (val === undefined || val === null) ? '' : val; }
+      setVal(prefix + 'Name', settings.challenge_name);
+      setVal(prefix + 'Eyebrow', settings.eyebrow);
+      setVal(prefix + 'Headline', settings.headline);
+      setVal(prefix + 'Sub', settings.subheadline);
+      setVal(prefix + 'Video', settings.intro_video_url);
+      setVal(prefix + 'PrizeType', settings.prize_type || '');
+      setVal(prefix + 'PrizeHeroLabel', settings.prize_hero_label);
+      setVal(prefix + 'PrizeHeroAmount', settings.prize_hero_amount);
+      setVal(prefix + 'PrizeFirstCash', settings.prize_first_cash);
+      setVal(prefix + 'PrizeSecondCash', settings.prize_second_cash);
+      setVal(prefix + 'PrizeThirdCash', settings.prize_third_cash);
+      setVal(prefix + 'PrizeFirstText', settings.prize_first_text);
+      setVal(prefix + 'PrizeSecondText', settings.prize_second_text);
+      setVal(prefix + 'PrizeThirdText', settings.prize_third_text);
+      setVal(prefix + 'StandardPrice', settings.standard_price);
+      setVal(prefix + 'StandardLink', settings.standard_stripe_link);
+      setVal(prefix + 'F2FPrice', settings.f2f_price);
+      setVal(prefix + 'F2FLink', settings.f2f_stripe_link);
+      updateEditPrizeTotal(prefix);
+      toggleEditPrizeFields(prefix);
+    } catch(err){
+      console.error(err);
+      panel.innerHTML = '<div class="msg show error" style="margin:0;">Could not load settings: ' + escapeHtml(err.message) + '</div>';
+    }
+  }
+
+  function collectEditSettingsPayload(prefix, challengeId){
+    const prizeType = document.getElementById(prefix + 'PrizeType').value || null;
+    const isCash = prizeType === 'cash' || prizeType === 'both';
+    const firstCash = optionalNumber(prefix + 'PrizeFirstCash');
+    const secondCash = optionalNumber(prefix + 'PrizeSecondCash');
+    const thirdCash = optionalNumber(prefix + 'PrizeThirdCash');
+    const prizePool = isCash ? ((firstCash || 0) + (secondCash || 0) + (thirdCash || 0)) : null;
+
+    const payload = {
+      challenge_id: challengeId,
+      updated_at: new Date().toISOString(),
+      challenge_name: optionalString(prefix + 'Name'),
+      eyebrow: optionalString(prefix + 'Eyebrow'),
+      headline: optionalString(prefix + 'Headline'),
+      subheadline: optionalString(prefix + 'Sub'),
+      intro_video_url: optionalString(prefix + 'Video'),
+      prize_type: prizeType,
+      prize_pool: prizePool,
+      prize_first_cash: firstCash,
+      prize_second_cash: secondCash,
+      prize_third_cash: thirdCash,
+      prize_hero_label: optionalString(prefix + 'PrizeHeroLabel'),
+      prize_hero_amount: optionalNumber(prefix + 'PrizeHeroAmount'),
+      prize_first_text: optionalString(prefix + 'PrizeFirstText'),
+      prize_second_text: optionalString(prefix + 'PrizeSecondText'),
+      prize_third_text: optionalString(prefix + 'PrizeThirdText'),
+      standard_price: optionalNumber(prefix + 'StandardPrice'),
+      standard_stripe_link: optionalString(prefix + 'StandardLink'),
+      f2f_price: optionalNumber(prefix + 'F2FPrice'),
+      f2f_stripe_link: optionalString(prefix + 'F2FLink')
+    };
+
+    Object.keys(payload).forEach(function(key){
+      if(payload[key] === null) delete payload[key];
+    });
+
+    return payload;
+  }
+
+  async function saveChallengeSettings(challengeId, prefix){
+    const msg = document.getElementById(prefix + 'Msg');
+    try{
+      const payload = collectEditSettingsPayload(prefix, challengeId);
+      const { error } = await client.from('challenge_settings').upsert(payload, { onConflict: 'challenge_id' });
+      if(error) throw error;
+      showMsg(msg, 'Cohort settings saved.', 'success');
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Could not save cohort settings.', 'error');
+    }
   }
 
   function viewLeaderboardPreview(challengeId){
@@ -990,6 +1380,62 @@
     if(cashRow) cashRow.style.display = (mode === 'cash' || mode === 'both') ? 'block' : 'none';
     if(physicalRow) physicalRow.style.display = (mode === 'physical' || mode === 'both') ? 'block' : 'none';
     if(totalRow) totalRow.style.display = (mode === 'cash' || mode === 'both') ? 'block' : 'none';
+  }
+
+  // --- cohort creation settings helpers ---
+  function toggleCreateSettings(){
+    const useDefaults = document.getElementById('useDefaultSettings').checked;
+    const panel = document.getElementById('createSettingsPanel');
+    if(panel) panel.style.display = useDefaults ? 'none' : 'block';
+  }
+
+  function toggleCreatePrizeFields(){
+    const mode = document.getElementById('ccSetPrizeType').value;
+    const cashRow = document.getElementById('ccCashPrizeFields');
+    const physicalRow = document.getElementById('ccPhysicalPrizeFields');
+    if(cashRow) cashRow.style.display = (mode === 'cash' || mode === 'both') ? 'block' : 'none';
+    if(physicalRow) physicalRow.style.display = (mode === 'physical' || mode === 'both') ? 'block' : 'none';
+  }
+
+  function updateCreatePrizeTotal(){
+    const total = prizeCashValue('ccSetPrizeFirstCash') + prizeCashValue('ccSetPrizeSecondCash') + prizeCashValue('ccSetPrizeThirdCash');
+    const el = document.getElementById('ccSetPrizeTotal');
+    if(el) el.value = fmtCurrency(total);
+  }
+
+  function prefilledValue(id, value){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.value = (value === null || value === undefined) ? '' : value;
+  }
+
+  async function loadCreateSettingsDefaults(){
+    try{
+      const s = await window.siteSettings.load();
+      if(!s) return;
+      prefilledValue('ccSetName', s.challenge_name);
+      prefilledValue('ccSetEyebrow', s.eyebrow);
+      prefilledValue('ccSetHeadline', s.headline);
+      prefilledValue('ccSetSub', s.subheadline);
+      prefilledValue('ccSetVideo', s.intro_video_url);
+      prefilledValue('ccSetPrizeType', s.prize_type);
+      prefilledValue('ccSetPrizeHeroLabel', s.prize_hero_label);
+      prefilledValue('ccSetPrizeHeroAmount', s.prize_hero_amount);
+      prefilledValue('ccSetPrizeFirstCash', s.prize_first_cash);
+      prefilledValue('ccSetPrizeSecondCash', s.prize_second_cash);
+      prefilledValue('ccSetPrizeThirdCash', s.prize_third_cash);
+      prefilledValue('ccSetPrizeFirstText', s.prize_first_text);
+      prefilledValue('ccSetPrizeSecondText', s.prize_second_text);
+      prefilledValue('ccSetPrizeThirdText', s.prize_third_text);
+      prefilledValue('ccSetStandardPrice', s.standard_price);
+      prefilledValue('ccSetStandardLink', s.standard_stripe_link);
+      prefilledValue('ccSetF2FPrice', s.f2f_price);
+      prefilledValue('ccSetF2FLink', s.f2f_stripe_link);
+      updateCreatePrizeTotal();
+      toggleCreatePrizeFields();
+    } catch(err){
+      console.error('Failed to load defaults for new cohort', err);
+    }
   }
 
   async function loadSettingsPanel(){

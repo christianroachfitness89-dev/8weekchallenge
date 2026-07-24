@@ -590,9 +590,108 @@ insert into public.competition_settings (id)
 values (1)
 on conflict (id) do nothing;
 
--- ---------- clean up legacy single-cohort challenge_settings table ----------
+-- ---------- challenge-specific settings overrides ----------
+-- Each challenge can override the global competition_settings. Null columns
+-- fall back to the global default row.
 
-drop table if exists public.challenge_settings cascade;
+create table if not exists public.challenge_settings (
+  challenge_id uuid primary key references public.challenges(id) on delete cascade,
+  updated_at timestamptz not null default now(),
+  challenge_name text,
+  headline text,
+  subheadline text,
+  eyebrow text,
+  intro_video_url text,
+  prize_type text check (prize_type in ('cash', 'physical', 'both')),
+  prize_pool numeric,
+  prize_first_cash numeric,
+  prize_second_cash numeric,
+  prize_third_cash numeric,
+  prize_hero_label text,
+  prize_hero_amount numeric,
+  prize_first_text text,
+  prize_second_text text,
+  prize_third_text text,
+  standard_price numeric,
+  standard_stripe_link text,
+  f2f_price numeric,
+  f2f_stripe_link text
+);
+
+alter table public.challenge_settings enable row level security;
+
+drop policy if exists "Anyone can read challenge settings" on public.challenge_settings;
+drop policy if exists "Admins can manage challenge settings" on public.challenge_settings;
+
+create policy "Anyone can read challenge settings"
+  on public.challenge_settings
+  for select
+  to anon
+  using (true);
+
+create policy "Admins can manage challenge settings"
+  on public.challenge_settings
+  for all
+  to authenticated
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
+
+-- Function: merge challenge-specific settings over global defaults.
+create or replace function public.get_effective_settings(target_challenge_id uuid)
+returns public.competition_settings
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    gs.id,
+    now() as updated_at,
+    coalesce(cs.challenge_name, gs.challenge_name) as challenge_name,
+    coalesce(cs.headline, gs.headline) as headline,
+    coalesce(cs.subheadline, gs.subheadline) as subheadline,
+    coalesce(cs.eyebrow, gs.eyebrow) as eyebrow,
+    coalesce(cs.intro_video_url, gs.intro_video_url) as intro_video_url,
+    coalesce(cs.prize_type, gs.prize_type) as prize_type,
+    coalesce(cs.prize_pool, gs.prize_pool) as prize_pool,
+    coalesce(cs.prize_first_cash, gs.prize_first_cash) as prize_first_cash,
+    coalesce(cs.prize_second_cash, gs.prize_second_cash) as prize_second_cash,
+    coalesce(cs.prize_third_cash, gs.prize_third_cash) as prize_third_cash,
+    coalesce(cs.prize_hero_label, gs.prize_hero_label) as prize_hero_label,
+    coalesce(cs.prize_hero_amount, gs.prize_hero_amount) as prize_hero_amount,
+    coalesce(cs.prize_first_text, gs.prize_first_text) as prize_first_text,
+    coalesce(cs.prize_second_text, gs.prize_second_text) as prize_second_text,
+    coalesce(cs.prize_third_text, gs.prize_third_text) as prize_third_text,
+    coalesce(cs.standard_price, gs.standard_price) as standard_price,
+    coalesce(cs.standard_stripe_link, gs.standard_stripe_link) as standard_stripe_link,
+    coalesce(cs.f2f_price, gs.f2f_price) as f2f_price,
+    coalesce(cs.f2f_stripe_link, gs.f2f_stripe_link) as f2f_stripe_link
+  from public.competition_settings gs
+  left join public.challenge_settings cs on cs.challenge_id = target_challenge_id
+  where gs.id = 1;
+$$;
+
+grant execute on function public.get_effective_settings(uuid) to anon;
+grant execute on function public.get_effective_settings(uuid) to authenticated;
+
+-- Function: pick the challenge that should currently drive the public site.
+create or replace function public.active_or_next_challenge()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select id from public.challenges
+  where starts_at > now() or (baseline_opens_at <= now() and ends_at >= now())
+  order by
+    case when baseline_opens_at <= now() and ends_at >= now() then 0 else 1 end,
+    starts_at
+  limit 1;
+$$;
+
+grant execute on function public.active_or_next_challenge() to anon;
+grant execute on function public.active_or_next_challenge() to authenticated;
 
 -- ---------- initial admin setup ----------
 -- After deploying, create your own admin account through signup, then run:

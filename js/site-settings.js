@@ -1,22 +1,56 @@
 /*
  * 8-Week Challenge - shared site settings loader
  *
- * Loads homepage / signup content from the public.competition_settings table.
+ * Loads homepage / signup content from the public.competition_settings table,
+ * merged with the active/next challenge's challenge_settings overrides.
  */
 
 (function () {
   const client = window.sb;
 
-  async function loadSettings() {
+  async function loadSettings(challengeId) {
     try {
-      const { data, error } = await client
-        .from('competition_settings')
-        .select('*')
-        .single();
+      let targetId = challengeId;
+
+      if (!targetId) {
+        const { data: activeId, error: activeError } = await client.rpc(
+          'active_or_next_challenge'
+        );
+        if (activeError) throw activeError;
+        targetId = activeId || null;
+      }
+
+      if (!targetId) {
+        const { data, error } = await client
+          .from('competition_settings')
+          .select('*')
+          .single();
+        if (error) throw error;
+        return data || null;
+      }
+
+      const { data, error } = await client.rpc('get_effective_settings', {
+        target_challenge_id: targetId
+      });
       if (error) throw error;
       return data || null;
     } catch (err) {
       console.error('loadSettings error:', err);
+      return null;
+    }
+  }
+
+  async function loadChallengeSettings(challengeId) {
+    try {
+      const { data, error } = await client
+        .from('challenge_settings')
+        .select('*')
+        .eq('challenge_id', challengeId)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data || null;
+    } catch (err) {
+      console.error('loadChallengeSettings error:', err);
       return null;
     }
   }
@@ -33,7 +67,11 @@
 
   window.siteSettings = {
     load: loadSettings,
+    loadChallenge: loadChallengeSettings,
     formatCurrency: formatCurrency,
     formatPerWeek: formatPerWeek
   };
+
+  // Expose formatCurrency globally too for pages that don't import it.
+  window.formatCurrency = formatCurrency;
 })();
