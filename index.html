@@ -291,11 +291,14 @@
     function applyPrizes(s) {
       const mode = ['cash', 'physical', 'both'].includes(s.prize_type) ? s.prize_type : fallback.prize_type;
       const heroLabel = (s.prize_hero_label || '').trim() || 'Total Prize Pool';
+      const heroAmount = s.prize_hero_amount == null ? null : Number(s.prize_hero_amount);
 
       const firstCash = s.prize_first_cash == null ? fallback.prize_first_cash : Number(s.prize_first_cash);
       const secondCash = s.prize_second_cash == null ? fallback.prize_second_cash : Number(s.prize_second_cash);
       const thirdCash = s.prize_third_cash == null ? fallback.prize_third_cash : Number(s.prize_third_cash);
-      const pool = mode !== 'physical' ? (firstCash + secondCash + thirdCash) : 0;
+      const cashPool = firstCash + secondCash + thirdCash;
+      const pool = mode !== 'physical' ? cashPool : 0;
+      const heroValue = heroAmount != null ? heroAmount : (mode !== 'physical' ? cashPool : 0);
 
       const firstText = (s.prize_first_text || '').trim();
       const secondText = (s.prize_second_text || '').trim();
@@ -311,7 +314,7 @@
       setText('ticketPrizeLabel', heroLabel);
 
       if (mode === 'cash') {
-        setText('ticketPrize', fmtCurrency(pool));
+        setText('ticketPrize', fmtCurrency(heroValue));
         setText('prizeHeadline', fmtCurrency(pool) + ' pool, split three ways');
         setText('prizeFirst', fmtCurrency(firstCash));
         setText('prizeSecond', fmtCurrency(secondCash));
@@ -320,7 +323,7 @@
         setText('prizeSecondSub', 'Cash prize');
         setText('prizeThirdSub', 'Cash prize');
       } else if (mode === 'physical') {
-        setText('ticketPrize', 'Prizes');
+        setText('ticketPrize', fmtCurrency(heroValue));
         setText('prizeHeadline', 'Prizes, split three ways');
         setText('prizeFirst', firstText || '1st place prize');
         setText('prizeSecond', secondText || '2nd place prize');
@@ -330,7 +333,7 @@
         setText('prizeThirdSub', '3rd place');
       } else {
         // Both cash and physical prizes.
-        setText('ticketPrize', fmtCurrency(pool));
+        setText('ticketPrize', fmtCurrency(heroValue));
         setText('prizeHeadline', fmtCurrency(pool) + ' cash + prizes, split three ways');
         setText('prizeFirst', fmtCurrency(firstCash));
         setText('prizeSecond', fmtCurrency(secondCash));

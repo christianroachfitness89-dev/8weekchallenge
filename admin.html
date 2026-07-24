@@ -259,7 +259,12 @@
           <div class="form-row">
             <label for="setPrizeHeroLabel">Hero prize label</label>
             <input type="text" id="setPrizeHeroLabel" placeholder="e.g. Prize Packs Total Value">
-            <p class="hint">Label above the hero prize card. Leave blank for “Total Prize Pool”.</p>
+            <p class="hint">Small text above the red amount. Leave blank for “Total Prize Pool”.</p>
+          </div>
+          <div class="form-row">
+            <label for="setPrizeHeroAmount">Hero prize amount ($)</label>
+            <input type="number" id="setPrizeHeroAmount" min="0" step="1" placeholder="Leave blank to use total cash pool">
+            <p class="hint">Value shown in red on the hero card. Leave blank to use the cash total.</p>
           </div>
         </div>
 
@@ -999,6 +1004,7 @@
       document.getElementById('setVideo').value = s.intro_video_url || '';
       document.getElementById('setPrizeType').value = ['cash', 'physical', 'both'].includes(s.prize_type) ? s.prize_type : 'cash';
       document.getElementById('setPrizeHeroLabel').value = s.prize_hero_label || '';
+      document.getElementById('setPrizeHeroAmount').value = s.prize_hero_amount ?? '';
       document.getElementById('setPrizeFirstCash').value = s.prize_first_cash ?? 1000;
       document.getElementById('setPrizeSecondCash').value = s.prize_second_cash ?? 600;
       document.getElementById('setPrizeThirdCash').value = s.prize_third_cash ?? 400;
@@ -1131,6 +1137,9 @@
     const thirdCash = prizeCashValue('setPrizeThirdCash');
     const prizePool = isCash ? firstCash + secondCash + thirdCash : 0;
 
+    const heroAmountRaw = document.getElementById('setPrizeHeroAmount').value;
+    const heroAmount = heroAmountRaw === '' ? null : parseFloat(heroAmountRaw);
+
     const payload = {
       id: 1,
       updated_at: new Date().toISOString(),
@@ -1142,6 +1151,7 @@
       prize_type: prizeType,
       prize_pool: prizePool,
       prize_hero_label: document.getElementById('setPrizeHeroLabel').value.trim() || null,
+      prize_hero_amount: isNaN(heroAmount) ? null : heroAmount,
       prize_first_cash: firstCash,
       prize_second_cash: secondCash,
       prize_third_cash: thirdCash,

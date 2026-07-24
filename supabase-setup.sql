@@ -527,6 +527,7 @@ create table if not exists public.competition_settings (
   prize_second_cash numeric not null default 600,
   prize_third_cash numeric not null default 400,
   prize_hero_label text,
+  prize_hero_amount numeric,
   prize_first_text text,
   prize_second_text text,
   prize_third_text text,
@@ -541,7 +542,8 @@ alter table public.competition_settings
   add column if not exists prize_first_cash numeric not null default 1000,
   add column if not exists prize_second_cash numeric not null default 600,
   add column if not exists prize_third_cash numeric not null default 400,
-  add column if not exists prize_hero_label text;
+  add column if not exists prize_hero_label text,
+  add column if not exists prize_hero_amount numeric;
 
 update public.competition_settings
 set
