@@ -638,7 +638,29 @@ create policy "Admins can manage challenge settings"
 
 -- Function: merge challenge-specific settings over global defaults.
 create or replace function public.get_effective_settings(target_challenge_id uuid)
-returns public.competition_settings
+returns table (
+  id integer,
+  updated_at timestamptz,
+  challenge_name text,
+  headline text,
+  subheadline text,
+  eyebrow text,
+  intro_video_url text,
+  prize_type text,
+  prize_pool numeric,
+  prize_first_cash numeric,
+  prize_second_cash numeric,
+  prize_third_cash numeric,
+  prize_hero_label text,
+  prize_hero_amount numeric,
+  prize_first_text text,
+  prize_second_text text,
+  prize_third_text text,
+  standard_price numeric,
+  standard_stripe_link text,
+  f2f_price numeric,
+  f2f_stripe_link text
+)
 language sql
 stable
 security definer
