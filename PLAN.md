@@ -1,11 +1,11 @@
-# 8-Week Challenge — Hosted Site Plan
+# 8-Week Challenge - Hosted Site Plan
 
 ## Decisions confirmed
 
 - **Payment:** Stripe Payment Links (no server needed).
 - **Login:** Email + password accounts via Supabase Auth.
 - **Backend/hosting:** Supabase (database + auth + storage) + Netlify (static hosting).
-- **Admin area:** Yes — manage entrants, verify weigh-ins, export data.
+- **Admin area:** Yes - manage entrants, verify weigh-ins, export data.
 - **Units:** Kilograms throughout (no lbs anywhere).
 
 ## Goals

@@ -1,4 +1,4 @@
-# 8-Week Challenge — Hosted Site
+# 8-Week Challenge - Hosted Site
 
 A complete, hosted website for running an 8-week fitness/weight-loss challenge.
 
@@ -16,11 +16,11 @@ A complete, hosted website for running an 8-week fitness/weight-loss challenge.
 
 ## Shared code
 
-- `js/supabase-client.js` — Supabase client config
-- `js/auth.js` — sign up, sign in, session, profile helpers
-- `js/leaderboard.js` — leaderboard data + rendering
-- `css/main.css` — shared styles
-- `supabase-setup.sql` — database schema, RLS policies, storage bucket, leaderboard function
+- `js/supabase-client.js` - Supabase client config
+- `js/auth.js` - sign up, sign in, session, profile helpers
+- `js/leaderboard.js` - leaderboard data + rendering
+- `css/main.css` - shared styles
+- `supabase-setup.sql` - database schema, RLS policies, storage bucket, leaderboard function
 
 ## How to deploy
 

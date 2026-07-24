@@ -1,9 +1,9 @@
-# 8-Week Challenge — Multi-Cohort Architecture Plan
+# 8-Week Challenge - Multi-Cohort Architecture Plan
 
 ## Decisions confirmed
 
 - **One challenge at a time per participant** (`challenge_id` on `profiles`).
-- **Reset existing data** is acceptable — only test data exists.
+- **Reset existing data** is acceptable - only test data exists.
 - **Admin manually assigns** participants to a challenge after payment.
 - **Baseline opens 48 hours before the Monday start**.
 - **After a challenge ends:** lock check-ins and archive the leaderboard.
@@ -83,7 +83,7 @@ Every check-in is scoped to the participant's current challenge.
 | File | Changes |
 |------|---------|
 | `supabase-setup.sql` | New `challenges` table; add `challenge_id` to `profiles` and `checkins`; update RLS; update leaderboard function |
-| `signup.html` | No major change — participant signs up unassigned |
+| `signup.html` | No major change - participant signs up unassigned |
 | `login.html` | No change |
 | `dashboard.html` | Read `profile.challenge_id`; enforce baseline window; calculate weeks from challenge start; submit `challenge_id` with check-ins |
 | `leaderboard.html` | Accept challenge param; call `get_leaderboard(challenge_id)` |

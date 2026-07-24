@@ -1,5 +1,5 @@
 /*
- * 8-Week Challenge — Supabase client configuration
+ * 8-Week Challenge - Supabase client configuration
  *
  * Replace the placeholders below with your own Supabase project URL and
  * anon/public key after creating the project (see SETUP.md).
@@ -22,7 +22,7 @@ function getSupabaseClient() {
   }
 
   if (SUPABASE_URL.includes('YOUR_PROJECT_ID') || SUPABASE_ANON_KEY.includes('YOUR_SUPABASE_ANON_KEY')) {
-    console.warn('Supabase credentials are still placeholders — update supabase-client.js before deploying.');
+    console.warn('Supabase credentials are still placeholders - update supabase-client.js before deploying.');
   }
 
   _client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

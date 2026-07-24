@@ -1,5 +1,5 @@
 /*
- * 8-Week Challenge — shared authentication helpers
+ * 8-Week Challenge - shared authentication helpers
  *
  * These functions wrap Supabase Auth and the `profiles` table used to store
  * challenge-specific data (name, tier, payment status, admin flag, etc.).
@@ -35,7 +35,7 @@
 
       if (profileError) {
         console.error('Profile upsert error:', profileError);
-        // Don't throw here — auth succeeded; trigger also creates a basic profile as fallback.
+        // Don't throw here - auth succeeded; trigger also creates a basic profile as fallback.
       }
     }
 

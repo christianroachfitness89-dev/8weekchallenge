@@ -1,4 +1,4 @@
-# 8-Week Challenge — Deployment Setup Guide
+# 8-Week Challenge - Deployment Setup Guide
 
 This guide walks you through getting the hosted site live with Supabase (database + auth + storage) and Stripe (payments), deployed on Netlify.
 
@@ -16,7 +16,7 @@ This guide walks you through getting the hosted site live with Supabase (databas
 1. Go to [supabase.com](https://supabase.com) and sign in.
 2. Click **New Project**.
 3. Give it a name like `eight-week-challenge` and choose a region close to your entrants.
-4. Save the generated **Project URL** and **anon public API key** — you’ll paste them into the code in Step 4.
+4. Save the generated **Project URL** and **anon public API key** - you’ll paste them into the code in Step 4.
 
 ---
 
@@ -42,14 +42,14 @@ This creates:
 
 ## Step 3: Configure Supabase Auth
 
-### Option A — Keep email confirmation enabled (recommended for production)
+### Option A - Keep email confirmation enabled (recommended for production)
 
 1. In Supabase, go to **Authentication > Providers**.
 2. Make sure **Email** is enabled.
 3. Go to **Authentication > Email Templates** and review the confirmation email.
 4. For production, go to **Authentication > SMTP** and connect your own email provider so confirmation emails don’t land in spam.
 
-### Option B — Disable email confirmation (faster for testing)
+### Option B - Disable email confirmation (faster for testing)
 
 1. In Supabase, go to **Authentication > Providers > Email**.
 2. Turn **Confirm email** OFF.
@@ -73,8 +73,8 @@ This creates:
 
 1. Log in to your [Stripe Dashboard](https://dashboard.stripe.com).
 2. Go to **Payment Links** and create two products:
-   - **Standard** — $280, one-time payment
-   - **Face-to-Face** — $792, one-time payment
+   - **Standard** - $280, one-time payment
+   - **Face-to-Face** - $792, one-time payment
 3. For each Payment Link, set the **After payment** redirect URL to:
    `https://YOUR_NETLIFY_SITE_URL/payment-success.html`
 4. Copy each Payment Link URL.

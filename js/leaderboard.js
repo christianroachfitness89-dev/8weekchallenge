@@ -1,5 +1,5 @@
 /*
- * 8-Week Challenge — leaderboard data and rendering helpers
+ * 8-Week Challenge - leaderboard data and rendering helpers
  *
  * Used by leaderboard.html and admin.html.
  */

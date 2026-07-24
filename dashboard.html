@@ -112,7 +112,7 @@
               <div class="form-row hidden" id="photoRow">
                 <label for="ciPhoto">Official weigh-in photo (Week 0, 4, or 8)</label>
                 <input type="file" id="ciPhoto" accept="image/*">
-                <p class="hint">Timestamped photo of you on the scale, numbers visible. Private — admin only.</p>
+                <p class="hint">Timestamped photo of you on the scale, numbers visible. Private - admin only.</p>
               </div>
 
               <div class="two-col">
@@ -123,12 +123,12 @@
                 <div class="form-row">
                   <label for="ciEnergy">Energy (1–5)</label>
                   <select id="ciEnergy">
-                    <option value="">—</option>
-                    <option value="1">1 — Exhausted</option>
-                    <option value="2">2 — Low</option>
-                    <option value="3">3 — Average</option>
-                    <option value="4">4 — Good</option>
-                    <option value="5">5 — Excellent</option>
+                    <option value="">-</option>
+                    <option value="1">1 - Exhausted</option>
+                    <option value="2">2 - Low</option>
+                    <option value="3">3 - Average</option>
+                    <option value="4">4 - Good</option>
+                    <option value="5">5 - Excellent</option>
                   </select>
                 </div>
               </div>
@@ -137,12 +137,12 @@
                 <div class="form-row">
                   <label for="ciAdherence">Adherence (1–5)</label>
                   <select id="ciAdherence">
-                    <option value="">—</option>
-                    <option value="1">1 — Off plan</option>
-                    <option value="2">2 — Struggled</option>
-                    <option value="3">3 — Mostly on track</option>
-                    <option value="4">4 — On track</option>
-                    <option value="5">5 — Locked in</option>
+                    <option value="">-</option>
+                    <option value="1">1 - Off plan</option>
+                    <option value="2">2 - Struggled</option>
+                    <option value="3">3 - Mostly on track</option>
+                    <option value="4">4 - On track</option>
+                    <option value="5">5 - Locked in</option>
                   </select>
                 </div>
                 <div class="form-row">
@@ -163,19 +163,19 @@
             <div style="display:grid;gap:12px;">
               <div class="progress-stat">
                 <span class="stat-label">Baseline weight</span>
-                <span class="stat-value" id="statStart">—</span>
+                <span class="stat-value" id="statStart">-</span>
               </div>
               <div class="progress-stat">
                 <span class="stat-label">Latest weight</span>
-                <span class="stat-value" id="statLatest">—</span>
+                <span class="stat-value" id="statLatest">-</span>
               </div>
               <div class="progress-stat">
                 <span class="stat-label">Change</span>
-                <span class="stat-value positive" id="statChange">—</span>
+                <span class="stat-value positive" id="statChange">-</span>
               </div>
               <div class="progress-stat">
                 <span class="stat-label">Check-ins logged</span>
-                <span class="stat-value" id="statWeeks">—</span>
+                <span class="stat-value" id="statWeeks">-</span>
               </div>
             </div>
             <p class="note">Remember: only rank and % progress appear on the public leaderboard. Your raw weight stays private.</p>
@@ -186,7 +186,7 @@
                 <div class="form-row">
                   <label for="ppFile">Upload a progress photo</label>
                   <input type="file" id="ppFile" accept="image/*" required>
-                  <p class="hint">Optional progress shot. Private — only you and the organiser can see it.</p>
+                  <p class="hint">Optional progress shot. Private - only you and the organiser can see it.</p>
                 </div>
                 <button type="submit" class="submit-btn" id="ppSubmitBtn">Upload Photo</button>
                 <div class="msg" id="ppMsg"></div>
@@ -206,7 +206,7 @@
         <div class="card" style="padding:0;overflow:hidden;">
           <div style="padding:20px 24px;border-bottom:1px solid var(--line);background:var(--paper-3);">
             <h3 style="font-size:20px;margin:0;">Cohort Chat</h3>
-            <p style="margin:4px 0 0;font-size:13px;color:var(--ink-soft);">Community, support, and camaraderie — scoped to your cohort only.</p>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink-soft);">Community, support, and camaraderie - scoped to your cohort only.</p>
           </div>
 
           <div id="pinnedMessages" class="chat-pinned" style="display:none;"></div>
@@ -260,7 +260,7 @@
   }
 
   function fmtDate(iso){
-    if(!iso) return '—';
+    if(!iso) return '-';
     return new Date(iso).toLocaleString(undefined, { weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
   }
 
@@ -512,8 +512,8 @@
       if(!latest || c.week > latest.week) latest = c;
     });
 
-    document.getElementById('statStart').textContent = startWeight ? startWeight.toFixed(1) + ' kg' : '—';
-    document.getElementById('statLatest').textContent = latest ? latest.weight_kg.toFixed(1) + ' kg' : '—';
+    document.getElementById('statStart').textContent = startWeight ? startWeight.toFixed(1) + ' kg' : '-';
+    document.getElementById('statLatest').textContent = latest ? latest.weight_kg.toFixed(1) + ' kg' : '-';
 
     const weeksLogged = checkins.filter(function(c){ return c.week > 0; }).length;
     document.getElementById('statWeeks').textContent = weeksLogged + ' / 8';
@@ -524,7 +524,7 @@
       const sign = diff >= 0 ? '-' : '+';
       document.getElementById('statChange').textContent = sign + Math.abs(diff).toFixed(1) + ' kg (' + sign + Math.abs(pct).toFixed(1) + '%)';
     } else {
-      document.getElementById('statChange').textContent = '—';
+      document.getElementById('statChange').textContent = '-';
     }
   }
 
