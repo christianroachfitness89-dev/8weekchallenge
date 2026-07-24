@@ -204,25 +204,19 @@
   .timeline-step h3{font-family:'Oswald',sans-serif;font-size:20px;text-transform:uppercase;margin:0 0 10px;}
   .timeline-step p{margin:0;color:var(--ink-soft);font-size:15px;}
 
-  /* ---------- transformations ---------- */
-  .transform-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;}
-  .transform-card{
-    background:var(--paper-3);border:1px solid var(--line);border-radius:var(--radius);
-    overflow:hidden;transition:all .25s;
+  /* ---------- video ---------- */
+  .video-wrap{
+    position:relative;padding-bottom:56.25%;height:0;background:var(--ink);
+    border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);
   }
-  .transform-card:hover{transform:translateY(-6px);box-shadow:var(--shadow);}
-  .transform-img{
-    height:200px;background:linear-gradient(135deg, var(--paper-2), var(--line));
-    display:flex;align-items:center;justify-content:center;
-    font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;color:var(--ink-soft);
-    letter-spacing:0.08em;
+  .video-placeholder{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:var(--paper-2);text-align:center;padding:20px;
   }
-  .transform-body{padding:24px;}
-  .transform-quote{font-size:15px;line-height:1.6;color:var(--ink);margin:0 0 16px;font-style:italic;}
-  .transform-name{font-weight:700;font-size:14px;}
-  .transform-result{font-size:12px;color:var(--red-dark);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:0.06em;}
-
-  @media(max-width:900px){.transform-grid{grid-template-columns:1fr;}}
+  .video-placeholder .vp-label{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:16px;
+  }
+  .video-placeholder .vp-text{font-size:17px;max-width:460px;line-height:1.6;}
 
   /* ---------- pricing ---------- */
   .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;}
@@ -320,7 +314,7 @@
     <a href="premium-preview.html" class="brand"><span class="dot"></span>8-Week Challenge</a>
     <nav class="nav-links">
       <a href="#how">How it works</a>
-      <a href="#transformations">Results</a>
+      <a href="#video">Video</a>
       <a href="#pricing">Pricing</a>
       <a href="#coach">Coach</a>
     </nav>
@@ -332,7 +326,7 @@
   <div class="wrap">
     <div class="hero-grid">
       <div>
-        <div class="hero-eyebrow">Private Coaching Cohort · 8 Weeks · Track in KG</div>
+        <div class="hero-eyebrow">Private Coaching Challenge · 8 Weeks · Track in KG</div>
         <h1>Show up.<br>Log it.<br><em>Win the transformation.</em></h1>
         <p class="hero-sub">
           An elite 8-week accountability experience for committed people. Daily habits, weekly check-ins, real community, and a prize pool that rewards consistency - all tracked in kilograms.
@@ -359,7 +353,7 @@
     </div>
     <div class="cred-item">
       <div class="cred-num">100+</div>
-      <div class="cred-label">KG lost across cohorts</div>
+      <div class="cred-label">KG lost across challenges</div>
     </div>
     <div class="cred-item">
       <div class="cred-num">6/8</div>
@@ -379,7 +373,7 @@
     <div class="timeline reveal">
       <div class="timeline-step">
         <h3>Monday - Leaderboard drops</h3>
-        <p>See exactly where you stand against your cohort. Rankings are based on % body weight lost, so every starting point is fair.</p>
+        <p>See exactly where you stand against your challenge. Rankings are based on % body weight lost, so every starting point is fair.</p>
       </div>
       <div class="timeline-step">
         <h3>Wednesday - Mid-week check-in</h3>
@@ -397,40 +391,22 @@
   </div>
 </section>
 
-<section id="transformations" style="background:var(--paper-3);">
-  <div class="wrap">
+<section id="video" style="background:var(--paper-3);">
+  <div class="wrap-narrow">
     <div class="sec-head reveal">
-      <div class="sec-eyebrow">Real Results</div>
-      <h2>Transformations from inside the cohort</h2>
-      <p>These are real entrants from previous rounds. Your placeholder content will be swapped with actual client photos and quotes.</p>
+      <div class="sec-eyebrow">See It First</div>
+      <h2>Watch the intro</h2>
+      <p>This is where your intro video goes. A 60-90 second walkthrough of what the challenge is, who it is for, and what is on the line is one of the highest-converting pieces of content you can add here.</p>
     </div>
 
-    <div class="transform-grid reveal">
-      <div class="transform-card">
-        <div class="transform-img">[Client photo]</div>
-        <div class="transform-body">
-          <p class="transform-quote">"The structure changed everything. I stopped guessing and started executing."</p>
-          <div class="transform-name">Alex M.</div>
-          <div class="transform-result">-8.2% body weight</div>
-        </div>
-      </div>
-      <div class="transform-card">
-        <div class="transform-img">[Client photo]</div>
-        <div class="transform-body">
-          <p class="transform-quote">"I have tried challenges before. This one actually held me accountable."</p>
-          <div class="transform-name">Sam K.</div>
-          <div class="transform-result">-6.7% body weight</div>
-        </div>
-      </div>
-      <div class="transform-card">
-        <div class="transform-img">[Client photo]</div>
-        <div class="transform-body">
-          <p class="transform-quote">"The community made it feel like I was not doing this alone."</p>
-          <div class="transform-name">Jordan R.</div>
-          <div class="transform-result">-10.1% body weight</div>
-        </div>
+    <div class="reveal" style="position:relative;padding-bottom:56.25%;height:0;background:var(--ink);border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);">
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--paper-2);text-align:center;padding:20px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:16px;">[Intro video placeholder]</div>
+        <div style="font-size:17px;max-width:460px;line-height:1.6;">Embed a YouTube / Vimeo video here, or upload a self-hosted MP4.</div>
       </div>
     </div>
+
+    <p class="reveal" style="text-align:center;margin-top:24px;font-size:14px;color:var(--ink-soft);">Testimonials will be added below this video once your first challenge rounds are complete.</p>
   </div>
 </section>
 
@@ -466,7 +442,7 @@
         <div class="price-num">$280</div>
         <div class="price-total">$35 / week · 8 weeks</div>
         <ul class="price-list">
-          <li>Private cohort community access</li>
+          <li>Private challenge community access</li>
           <li>Weekly check-in form and live leaderboard</li>
           <li>Full prize pool eligibility</li>
           <li>Remote access from anywhere</li>
@@ -510,7 +486,7 @@
 
 <section class="final-cta">
   <div class="wrap-narrow">
-    <h2 class="reveal">Your cohort is waiting.</h2>
+    <h2 class="reveal">Your challenge is waiting.</h2>
     <p class="reveal">Spots are limited to keep the community tight and the coaching personal. Join the next 8-week round.</p>
     <a href="signup.html" class="btn-primary reveal">Enter Now</a>
   </div>
