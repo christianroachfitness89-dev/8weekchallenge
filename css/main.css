@@ -129,6 +129,46 @@ header{
 }
 .btn-ghost:hover{color:var(--red-dark);border-color:var(--red-dark);}
 
+/* ---------- countdown ---------- */
+.countdown-card{
+  margin-top:32px;
+  background:var(--paper-3);
+  border:1.5px solid var(--line);
+  border-radius:var(--radius);
+  padding:20px 24px;
+  display:inline-block;
+  box-shadow:var(--shadow-sm);
+}
+.countdown-label{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:0.12em;
+  color:var(--ink-soft);
+  margin-bottom:12px;
+}
+.countdown-units{
+  display:flex;gap:18px;
+}
+.countdown-unit{
+  display:flex;flex-direction:column;align-items:center;min-width:52px;
+}
+.countdown-num{
+  font-family:'Oswald',sans-serif;
+  font-size:38px;font-weight:700;line-height:1;
+  color:var(--red-dark);
+}
+.countdown-name{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:10px;text-transform:uppercase;letter-spacing:0.1em;
+  color:var(--ink-soft);margin-top:6px;
+}
+@media(max-width:500px){
+  .countdown-card{padding:16px 18px;}
+  .countdown-units{gap:12px;}
+  .countdown-num{font-size:30px;}
+  .countdown-unit{min-width:44px;}
+}
+
 /* ---------- forms ---------- */
 .form-row{margin-bottom:20px;}
 .form-row label,.form-row .label-like{

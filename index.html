@@ -37,6 +37,16 @@
           <a href="signup.html" class="btn-primary">Claim Your Spot</a>
           <a href="#how" class="btn-ghost">See how it works</a>
         </div>
+
+        <div class="countdown-card" id="countdownCard" style="display:none;">
+          <div class="countdown-label" id="countdownLabel">Next challenge starts in</div>
+          <div class="countdown-units" id="countdownUnits">
+            <div class="countdown-unit"><span class="countdown-num" id="cdDays">00</span><span class="countdown-name">Days</span></div>
+            <div class="countdown-unit"><span class="countdown-num" id="cdHours">00</span><span class="countdown-name">Hours</span></div>
+            <div class="countdown-unit"><span class="countdown-num" id="cdMinutes">00</span><span class="countdown-name">Minutes</span></div>
+            <div class="countdown-unit"><span class="countdown-num" id="cdSeconds">00</span><span class="countdown-name">Seconds</span></div>
+          </div>
+        </div>
       </div>
       <div class="prize-card">
         <div class="prize-label" id="ticketPrizeLabel">Total Prize Pool</div>
@@ -373,6 +383,61 @@
       console.error('Failed to load competition settings', err);
       apply(fallback);
     });
+
+    // Countdown to the next upcoming challenge.
+    (function(){
+      const client = window.sb;
+      if(!client) return;
+
+      let timer = null;
+
+      function pad(n){ return n < 10 ? '0' + n : n; }
+
+      function render(targetDate){
+        const now = new Date().getTime();
+        const diff = targetDate - now;
+        const card = document.getElementById('countdownCard');
+        if(diff <= 0){
+          if(card) card.style.display = 'none';
+          if(timer) clearInterval(timer);
+          return;
+        }
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+        setText('cdDays', pad(days));
+        setText('cdHours', pad(hours));
+        setText('cdMinutes', pad(minutes));
+        setText('cdSeconds', pad(seconds));
+        if(card) card.style.display = 'inline-block';
+      }
+
+      async function loadCountdown(){
+        try{
+          const { data, error } = await client
+            .from('challenges')
+            .select('name, starts_at, baseline_opens_at')
+            .gte('starts_at', new Date().toISOString())
+            .order('starts_at', { ascending: true })
+            .limit(1);
+          if(error) throw error;
+          const challenge = (data || [])[0];
+          if(!challenge) return;
+
+          const target = new Date(challenge.baseline_opens_at || challenge.starts_at).getTime();
+          const label = document.getElementById('countdownLabel');
+          if(label) label.textContent = (challenge.name || 'Next challenge') + ' opens in';
+          render(target);
+          timer = setInterval(function(){ render(target); }, 1000);
+        } catch(err){
+          console.error('Countdown load failed', err);
+        }
+      }
+
+      loadCountdown();
+    })();
 
     // Simple reveal-on-scroll animation
     const observer = new IntersectionObserver(function(entries){
