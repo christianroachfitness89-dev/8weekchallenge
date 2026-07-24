@@ -453,6 +453,16 @@ create table if not exists public.chat_messages (
 
 create index if not exists idx_chat_messages_challenge on public.chat_messages(challenge_id, created_at desc);
 
+-- Add a relationship to public.profiles so Supabase can join sender names in queries.
+-- user_id already references auth.users; this adds a second FK to profiles(id).
+alter table public.chat_messages
+  drop constraint if exists chat_messages_user_id_profiles_fkey;
+
+alter table public.chat_messages
+  add constraint chat_messages_user_id_profiles_fkey
+  foreign key (user_id) references public.profiles(id)
+  on delete cascade;
+
 alter table public.chat_messages enable row level security;
 
 -- Users can read messages in their own cohort only.
