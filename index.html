@@ -39,7 +39,7 @@
         </div>
       </div>
       <div class="prize-card">
-        <div class="prize-label">Total Prize Pool</div>
+        <div class="prize-label" id="ticketPrizeLabel">Total Prize Pool</div>
         <div class="prize-amount" id="ticketPrize">$2,000</div>
         <div class="prize-desc">Winner determined by % of body weight lost, Week 0 to Week 8. Weekly check-ins required to stay eligible.</div>
       </div>
@@ -239,6 +239,7 @@
       prize_first_cash: 1000,
       prize_second_cash: 600,
       prize_third_cash: 400,
+      prize_hero_label: '',
       prize_first_text: '',
       prize_second_text: '',
       prize_third_text: '',
@@ -289,6 +290,7 @@
 
     function applyPrizes(s) {
       const mode = ['cash', 'physical', 'both'].includes(s.prize_type) ? s.prize_type : fallback.prize_type;
+      const heroLabel = (s.prize_hero_label || '').trim() || 'Total Prize Pool';
 
       const firstCash = s.prize_first_cash == null ? fallback.prize_first_cash : Number(s.prize_first_cash);
       const secondCash = s.prize_second_cash == null ? fallback.prize_second_cash : Number(s.prize_second_cash);
@@ -305,6 +307,8 @@
 
       // Reset any inline sizing from previous renders.
       [firstLabel, secondLabel, thirdLabel].forEach(function(el){ if(el){ el.style.fontSize = ''; el.style.lineHeight = ''; el.style.whiteSpace = ''; } });
+
+      setText('ticketPrizeLabel', heroLabel);
 
       if (mode === 'cash') {
         setText('ticketPrize', fmtCurrency(pool));

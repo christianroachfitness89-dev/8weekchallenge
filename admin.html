@@ -256,10 +256,16 @@
             </select>
             <p class="hint">Choose what appears on the homepage prize cards.</p>
           </div>
-          <div class="form-row" id="prizeTotalRow">
-            <label>Total prize pool</label>
-            <input type="text" id="setPrizeTotal" readonly style="background:var(--paper-3);color:var(--ink-soft);">
+          <div class="form-row">
+            <label for="setPrizeHeroLabel">Hero prize label</label>
+            <input type="text" id="setPrizeHeroLabel" placeholder="e.g. Prize Packs Total Value">
+            <p class="hint">Label above the hero prize card. Leave blank for “Total Prize Pool”.</p>
           </div>
+        </div>
+
+        <div class="form-row" id="prizeTotalRow">
+          <label>Total prize pool</label>
+          <input type="text" id="setPrizeTotal" readonly style="background:var(--paper-3);color:var(--ink-soft);max-width:240px;">
         </div>
 
         <div id="cashPrizeFields">
@@ -992,6 +998,7 @@
       document.getElementById('setSub').value = s.subheadline || '';
       document.getElementById('setVideo').value = s.intro_video_url || '';
       document.getElementById('setPrizeType').value = ['cash', 'physical', 'both'].includes(s.prize_type) ? s.prize_type : 'cash';
+      document.getElementById('setPrizeHeroLabel').value = s.prize_hero_label || '';
       document.getElementById('setPrizeFirstCash').value = s.prize_first_cash ?? 1000;
       document.getElementById('setPrizeSecondCash').value = s.prize_second_cash ?? 600;
       document.getElementById('setPrizeThirdCash').value = s.prize_third_cash ?? 400;
@@ -1134,6 +1141,7 @@
       intro_video_url: document.getElementById('setVideo').value.trim() || null,
       prize_type: prizeType,
       prize_pool: prizePool,
+      prize_hero_label: document.getElementById('setPrizeHeroLabel').value.trim() || null,
       prize_first_cash: firstCash,
       prize_second_cash: secondCash,
       prize_third_cash: thirdCash,
