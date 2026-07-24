@@ -465,6 +465,10 @@ alter table public.chat_messages
 
 alter table public.chat_messages enable row level security;
 
+drop policy if exists "Users can read cohort chat" on public.chat_messages;
+drop policy if exists "Users can post in cohort chat" on public.chat_messages;
+drop policy if exists "Admins can manage chat messages" on public.chat_messages;
+
 -- Users can read messages in their own cohort only.
 create policy "Users can read cohort chat"
   on public.chat_messages
