@@ -248,10 +248,40 @@
         </div>
         <div class="two-col">
           <div class="form-row">
-            <label for="setPrize">Prize pool ($)</label>
-            <input type="number" id="setPrize" min="0" step="1">
+            <label for="setPrizeFirstCash">1st place cash ($)</label>
+            <input type="number" id="setPrizeFirstCash" min="0" step="1" oninput="updatePrizeTotal()">
+          </div>
+          <div class="form-row">
+            <label for="setPrizeSecondCash">2nd place cash ($)</label>
+            <input type="number" id="setPrizeSecondCash" min="0" step="1" oninput="updatePrizeTotal()">
           </div>
         </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="setPrizeThirdCash">3rd place cash ($)</label>
+            <input type="number" id="setPrizeThirdCash" min="0" step="1" oninput="updatePrizeTotal()">
+          </div>
+          <div class="form-row">
+            <label>Total prize pool</label>
+            <input type="text" id="setPrizeTotal" readonly style="background:var(--paper-3);color:var(--ink-soft);">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="setPrizeFirstText">1st place physical prize (optional)</label>
+          <input type="text" id="setPrizeFirstText" placeholder="e.g. $500 supplement pack">
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="setPrizeSecondText">2nd place physical prize (optional)</label>
+            <input type="text" id="setPrizeSecondText" placeholder="e.g. $300 meal prep bundle">
+          </div>
+          <div class="form-row">
+            <label for="setPrizeThirdText">3rd place physical prize (optional)</label>
+            <input type="text" id="setPrizeThirdText" placeholder="e.g. $200 coaching voucher">
+          </div>
+        </div>
+
         <div class="two-col">
           <div class="form-row">
             <label for="setStandardPrice">Standard total price ($)</label>
@@ -913,6 +943,18 @@
 
   let currentSettings = null;
 
+  function prizeCashValue(id){
+    const el = document.getElementById(id);
+    const v = el ? parseFloat(el.value) : 0;
+    return isNaN(v) ? 0 : Math.max(0, v);
+  }
+
+  function updatePrizeTotal(){
+    const total = prizeCashValue('setPrizeFirstCash') + prizeCashValue('setPrizeSecondCash') + prizeCashValue('setPrizeThirdCash');
+    const el = document.getElementById('setPrizeTotal');
+    if(el) el.value = fmtCurrency(total);
+  }
+
   async function loadSettingsPanel(){
     try{
       const s = await window.siteSettings.load();
@@ -923,12 +965,19 @@
       document.getElementById('setHeadline').value = s.headline || '';
       document.getElementById('setSub').value = s.subheadline || '';
       document.getElementById('setVideo').value = s.intro_video_url || '';
-      document.getElementById('setPrize').value = s.prize_pool ?? '';
+      document.getElementById('setPrizeFirstCash').value = s.prize_first_cash ?? 1000;
+      document.getElementById('setPrizeSecondCash').value = s.prize_second_cash ?? 600;
+      document.getElementById('setPrizeThirdCash').value = s.prize_third_cash ?? 400;
+      document.getElementById('setPrizeFirstText').value = s.prize_first_text || '';
+      document.getElementById('setPrizeSecondText').value = s.prize_second_text || '';
+      document.getElementById('setPrizeThirdText').value = s.prize_third_text || '';
       document.getElementById('setStandardPrice').value = s.standard_price ?? '';
       document.getElementById('setStandardLink').value = s.standard_stripe_link || '';
       document.getElementById('setF2FPrice').value = s.f2f_price ?? '';
       document.getElementById('setF2FLink').value = s.f2f_stripe_link || '';
-      document.getElementById('forecastPrizePool').value = fmtCurrency(s.prize_pool || 0);
+      const totalPool = (Number(s.prize_first_cash) || 0) + (Number(s.prize_second_cash) || 0) + (Number(s.prize_third_cash) || 0);
+      document.getElementById('forecastPrizePool').value = fmtCurrency(totalPool || s.prize_pool || 0);
+      updatePrizeTotal();
     } catch(err){
       console.error(err);
       const msg = document.getElementById('settingsMsg');
@@ -941,12 +990,17 @@
     return '$' + Math.round(Number(n)).toLocaleString();
   }
 
+  function totalPrizePool(s){
+    if(!s) return 0;
+    return (Number(s.prize_first_cash) || 0) + (Number(s.prize_second_cash) || 0) + (Number(s.prize_third_cash) || 0) || (Number(s.prize_pool) || 0);
+  }
+
   function computeForecast(expected, stdPct, fixedCosts){
     const s = currentSettings;
     if(!s) return null;
     const stdPrice = Number(s.standard_price) || 0;
     const f2fPrice = Number(s.f2f_price) || 0;
-    const prize = Number(s.prize_pool) || 0;
+    const prize = totalPrizePool(s);
 
     stdPct = Math.min(1, Math.max(0, stdPct));
     const stdEntrants = Math.round(expected * stdPct);
@@ -974,9 +1028,10 @@
       return;
     }
 
-    const first = f.prize * 0.5;
-    const second = f.prize * 0.3;
-    const third = f.prize * 0.2;
+    const s = currentSettings;
+    const first = Number(s.prize_first_cash) || 0;
+    const second = Number(s.prize_second_cash) || 0;
+    const third = Number(s.prize_third_cash) || 0;
 
     let html = '<div class="forecast-grid">' +
       '<div class="forecast-box"><div class="fb-label">Gross revenue</div><div class="fb-value"' + (f.gross < 0 ? ' style="color:var(--red);"' : '') + '>' + fmtCurrency(f.gross) + '</div></div>' +
@@ -989,9 +1044,9 @@
 
     html += '<h4 style="margin-top:24px;font-size:16px;">Prize split</h4>' +
       '<div class="forecast-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));">' +
-        '<div class="forecast-box"><div class="fb-label">1st place (50%)</div><div class="fb-value">' + fmtCurrency(first) + '</div></div>' +
-        '<div class="forecast-box"><div class="fb-label">2nd place (30%)</div><div class="fb-value">' + fmtCurrency(second) + '</div></div>' +
-        '<div class="forecast-box"><div class="fb-label">3rd place (20%)</div><div class="fb-value">' + fmtCurrency(third) + '</div></div>' +
+        '<div class="forecast-box"><div class="fb-label">1st place</div><div class="fb-value">' + fmtCurrency(first) + '</div></div>' +
+        '<div class="forecast-box"><div class="fb-label">2nd place</div><div class="fb-value">' + fmtCurrency(second) + '</div></div>' +
+        '<div class="forecast-box"><div class="fb-label">3rd place</div><div class="fb-value">' + fmtCurrency(third) + '</div></div>' +
       '</div>';
 
     html += '<h4 style="margin-top:24px;font-size:16px;">Scenario planner</h4>' +
@@ -1032,6 +1087,11 @@
     const msg = document.getElementById('settingsMsg');
     msg.className = 'msg';
 
+    const firstCash = parseFloat(document.getElementById('setPrizeFirstCash').value);
+    const secondCash = parseFloat(document.getElementById('setPrizeSecondCash').value);
+    const thirdCash = parseFloat(document.getElementById('setPrizeThirdCash').value);
+    const prizePool = (isNaN(firstCash) ? 0 : firstCash) + (isNaN(secondCash) ? 0 : secondCash) + (isNaN(thirdCash) ? 0 : thirdCash);
+
     const payload = {
       id: 1,
       updated_at: new Date().toISOString(),
@@ -1040,19 +1100,23 @@
       headline: document.getElementById('setHeadline').value.trim(),
       subheadline: document.getElementById('setSub').value.trim(),
       intro_video_url: document.getElementById('setVideo').value.trim() || null,
-      prize_pool: parseFloat(document.getElementById('setPrize').value),
+      prize_type: 'cash',
+      prize_pool: prizePool,
+      prize_first_cash: firstCash,
+      prize_second_cash: secondCash,
+      prize_third_cash: thirdCash,
+      prize_first_text: document.getElementById('setPrizeFirstText').value.trim() || null,
+      prize_second_text: document.getElementById('setPrizeSecondText').value.trim() || null,
+      prize_third_text: document.getElementById('setPrizeThirdText').value.trim() || null,
       standard_price: parseFloat(document.getElementById('setStandardPrice').value),
       standard_stripe_link: document.getElementById('setStandardLink').value.trim(),
       f2f_price: parseFloat(document.getElementById('setF2FPrice').value),
       f2f_stripe_link: document.getElementById('setF2FLink').value.trim()
     };
 
-    if(Object.values(payload).some(function(v){ return v === ''; }) && !payload.intro_video_url){
-      // Basic sanity only; allow empty video.
-    }
-
-    if(isNaN(payload.prize_pool) || isNaN(payload.standard_price) || isNaN(payload.f2f_price)){
-      showMsg(msg, 'Prize pool and prices must be valid numbers.', 'error');
+    if(isNaN(payload.prize_pool) || isNaN(payload.standard_price) || isNaN(payload.f2f_price) ||
+       isNaN(payload.prize_first_cash) || isNaN(payload.prize_second_cash) || isNaN(payload.prize_third_cash)){
+      showMsg(msg, 'Prize amounts and prices must be valid numbers.', 'error');
       return;
     }
 

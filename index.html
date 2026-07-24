@@ -118,11 +118,12 @@
       <div class="sec-eyebrow">On The Line</div>
       <h2 id="prizeHeadline">$2,000 pool, split three ways</h2>
     </div>
-    <div class="pricing-grid reveal" style="grid-template-columns:repeat(3,1fr);">
+    <div class="pricing-grid reveal" style="grid-template-columns:repeat(3,1fr);" id="prizeCards">
+      <!-- populated by JS: each place shows cash + optional physical prize -->
       <div class="price-card">
         <div class="price-name">1st Place</div>
-        <div class="price-num" id="prizeFirst">$1,000</div>
-        <div class="price-total">50% of pool</div>
+        <div class="price-num prize-value" id="prizeFirst">$1,000</div>
+        <div class="price-total prize-sub" id="prizeFirstSub">Cash prize</div>
         <ul class="price-list">
           <li>Top % body weight lost</li>
           <li>Photo-verified Week 0 and Week 8</li>
@@ -132,8 +133,8 @@
       <div class="price-card featured">
         <div class="price-tag">Runner-up</div>
         <div class="price-name">2nd Place</div>
-        <div class="price-num" id="prizeSecond">$600</div>
-        <div class="price-total">30% of pool</div>
+        <div class="price-num prize-value" id="prizeSecond">$600</div>
+        <div class="price-total prize-sub" id="prizeSecondSub">Cash prize</div>
         <ul class="price-list">
           <li>Next best % body weight lost</li>
           <li>Full challenge completion</li>
@@ -142,8 +143,8 @@
       </div>
       <div class="price-card">
         <div class="price-name">3rd Place</div>
-        <div class="price-num" id="prizeThird">$400</div>
-        <div class="price-total">20% of pool</div>
+        <div class="price-num prize-value" id="prizeThird">$400</div>
+        <div class="price-total prize-sub" id="prizeThirdSub">Cash prize</div>
         <ul class="price-list">
           <li>Third best % body weight lost</li>
           <li>Consistent weekly check-ins</li>
@@ -233,7 +234,14 @@
       eyebrow: 'Private Coaching Challenge · 8 Weeks · Track in KG',
       headline: 'Show up.<br>Log it.<br><em>Win the transformation.</em>',
       subheadline: 'An elite 8-week accountability experience for committed people. Daily habits, weekly check-ins, real community, and a prize pool that rewards consistency - all tracked in kilograms.',
+      prize_type: 'cash',
       prize_pool: 2000,
+      prize_first_cash: 1000,
+      prize_second_cash: 600,
+      prize_third_cash: 400,
+      prize_first_text: '',
+      prize_second_text: '',
+      prize_third_text: '',
       standard_price: 280,
       f2f_price: 792,
       intro_video_url: ''
@@ -279,8 +287,42 @@
       container.innerHTML = embed;
     }
 
+    function applyPrizes(s) {
+      const firstCash = s.prize_first_cash == null ? fallback.prize_first_cash : Number(s.prize_first_cash);
+      const secondCash = s.prize_second_cash == null ? fallback.prize_second_cash : Number(s.prize_second_cash);
+      const thirdCash = s.prize_third_cash == null ? fallback.prize_third_cash : Number(s.prize_third_cash);
+      const pool = firstCash + secondCash + thirdCash || s.prize_pool || fallback.prize_pool;
+
+      const firstText = (s.prize_first_text || '').trim();
+      const secondText = (s.prize_second_text || '').trim();
+      const thirdText = (s.prize_third_text || '').trim();
+      const hasPhysical = !!(firstText || secondText || thirdText);
+
+      const firstLabel = document.getElementById('prizeFirst');
+      const secondLabel = document.getElementById('prizeSecond');
+      const thirdLabel = document.getElementById('prizeThird');
+
+      // Reset any inline sizing from the old physical-only view.
+      [firstLabel, secondLabel, thirdLabel].forEach(function(el){ if(el){ el.style.fontSize = ''; el.style.lineHeight = ''; el.style.whiteSpace = ''; } });
+
+      setText('ticketPrize', fmtCurrency(pool));
+      setText('prizeHeadline', fmtCurrency(pool) + (hasPhysical ? ' cash + prizes, split three ways' : ' pool, split three ways'));
+
+      setText('prizeFirst', fmtCurrency(firstCash));
+      setText('prizeSecond', fmtCurrency(secondCash));
+      setText('prizeThird', fmtCurrency(thirdCash));
+
+      setText('prizeFirstSub', firstText || 'Cash prize');
+      setText('prizeSecondSub', secondText || 'Cash prize');
+      setText('prizeThirdSub', thirdText || 'Cash prize');
+
+      // Long physical descriptions look better at a smaller size.
+      [firstLabel, secondLabel, thirdLabel].forEach(function(el){
+        if(el && el.textContent.length > 18) { el.style.fontSize = '24px'; el.style.lineHeight = '1.2'; el.style.whiteSpace = 'normal'; }
+      });
+    }
+
     function apply(s) {
-      const pool = s.prize_pool || fallback.prize_pool;
       const standard = s.standard_price || fallback.standard_price;
       const f2f = s.f2f_price || fallback.f2f_price;
 
@@ -288,11 +330,7 @@
       setHtml('heroHeadline', s.headline || fallback.headline);
       setHtml('heroSub', s.subheadline || fallback.subheadline);
 
-      setText('ticketPrize', fmtCurrency(pool));
-      setText('prizeHeadline', fmtCurrency(pool) + ' pool, split three ways');
-      setText('prizeFirst', fmtCurrency(pool * 0.5));
-      setText('prizeSecond', fmtCurrency(pool * 0.3));
-      setText('prizeThird', fmtCurrency(pool * 0.2));
+      applyPrizes(s);
 
       setText('standardPriceBig', fmtCurrency(standard));
       setText('standardPerWeek', fmtPerWeek(standard) + ' / week · 8 weeks');
