@@ -54,144 +54,180 @@
 
     <!-- Paid dashboard -->
     <div id="dashboardContent" class="hidden">
-      <div class="dashboard-grid">
-
-        <!-- Left column: check-in form + progress chart -->
-        <div>
-          <div class="card" style="margin-bottom:24px;">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
-              <div>
-                <h3 style="font-size:20px;">Current Cohort</h3>
-                <div id="challengeInfo" style="font-size:14px;color:var(--ink-soft);line-height:1.5;margin-top:4px;">Loading...</div>
-              </div>
-              <div id="challengeBadge" class="tag tag-paid" style="font-size:11px;text-transform:uppercase;">Active</div>
-            </div>
+      <div class="card" style="margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h3 style="font-size:20px;">Current Cohort</h3>
+            <div id="challengeInfo" style="font-size:14px;color:var(--ink-soft);line-height:1.5;margin-top:4px;">Loading...</div>
           </div>
-
-          <div class="card" style="margin-bottom:24px;">
-            <h3 style="font-size:22px;margin-bottom:20px;">Weight Progress</h3>
-            <div style="position:relative;height:260px;">
-              <canvas id="weightChart"></canvas>
-            </div>
-          </div>
-
-          <div class="card">
-            <h3 style="font-size:22px;margin-bottom:20px;">Weekly Check-In</h3>
-            <form id="checkinForm" onsubmit="handleCheckin(event)">
-
-            <div class="two-col">
-              <div class="form-row">
-                <label for="ciWeek">Week</label>
-                <select id="ciWeek" required onchange="loadWeekData()">
-                  <option value="0">Week 0 (baseline)</option>
-                  <option value="1">Week 1</option>
-                  <option value="2">Week 2</option>
-                  <option value="3">Week 3</option>
-                  <option value="4">Week 4 (midpoint)</option>
-                  <option value="5">Week 5</option>
-                  <option value="6">Week 6</option>
-                  <option value="7">Week 7</option>
-                  <option value="8">Week 8 (final)</option>
-                </select>
-              </div>
-
-              <div class="form-row">
-                <label for="ciWeight">Current weight (kg)</label>
-                <input type="number" id="ciWeight" required min="30" max="300" step="0.1" placeholder="80.2">
-                <p class="hint">Use the same scale, same time of day.</p>
-              </div>
-            </div>
-
-            <div class="form-row hidden" id="photoRow">
-              <label for="ciPhoto">Official weigh-in photo (Week 0, 4, or 8)</label>
-              <input type="file" id="ciPhoto" accept="image/*">
-              <p class="hint">Timestamped photo of you on the scale, numbers visible. Private — admin only.</p>
-            </div>
-
-            <div class="two-col">
-              <div class="form-row">
-                <label for="ciWorkouts">Workouts this week</label>
-                <input type="number" id="ciWorkouts" min="0" max="7" value="0">
-              </div>
-              <div class="form-row">
-                <label for="ciEnergy">Energy (1–5)</label>
-                <select id="ciEnergy">
-                  <option value="">—</option>
-                  <option value="1">1 — Exhausted</option>
-                  <option value="2">2 — Low</option>
-                  <option value="3">3 — Average</option>
-                  <option value="4">4 — Good</option>
-                  <option value="5">5 — Excellent</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="two-col">
-              <div class="form-row">
-                <label for="ciAdherence">Adherence (1–5)</label>
-                <select id="ciAdherence">
-                  <option value="">—</option>
-                  <option value="1">1 — Off plan</option>
-                  <option value="2">2 — Struggled</option>
-                  <option value="3">3 — Mostly on track</option>
-                  <option value="4">4 — On track</option>
-                  <option value="5">5 — Locked in</option>
-                </select>
-              </div>
-              <div class="form-row">
-                <label for="ciNotes">Notes (optional)</label>
-                <input type="text" id="ciNotes" placeholder="Wins, struggles, questions...">
-              </div>
-            </div>
-
-            <button type="submit" class="submit-btn" id="ciSubmitBtn">Save Check-In</button>
-            <div class="msg" id="ciMsg"></div>
-          </form>
-          </div>
+          <div id="challengeBadge" class="tag tag-paid" style="font-size:11px;text-transform:uppercase;">Active</div>
         </div>
-
-        <!-- Right: progress stats + progress photos -->
-        <div class="card-muted">
-          <h3 style="font-size:20px;margin-bottom:16px;">Your progress</h3>
-          <div style="display:grid;gap:12px;">
-            <div class="progress-stat">
-              <span class="stat-label">Baseline weight</span>
-              <span class="stat-value" id="statStart">—</span>
-            </div>
-            <div class="progress-stat">
-              <span class="stat-label">Latest weight</span>
-              <span class="stat-value" id="statLatest">—</span>
-            </div>
-            <div class="progress-stat">
-              <span class="stat-label">Change</span>
-              <span class="stat-value positive" id="statChange">—</span>
-            </div>
-            <div class="progress-stat">
-              <span class="stat-label">Check-ins logged</span>
-              <span class="stat-value" id="statWeeks">—</span>
-            </div>
-          </div>
-          <p class="note">Remember: only rank and % progress appear on the public leaderboard. Your raw weight stays private.</p>
-
-          <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px;">
-            <h3 style="font-size:20px;margin-bottom:14px;">Progress Photos</h3>
-            <form id="progressPhotoForm" onsubmit="handleProgressPhoto(event)">
-              <div class="form-row">
-                <label for="ppFile">Upload a progress photo</label>
-                <input type="file" id="ppFile" accept="image/*" required>
-                <p class="hint">Optional progress shot. Private — only you and the organiser can see it.</p>
-              </div>
-              <button type="submit" class="submit-btn" id="ppSubmitBtn">Upload Photo</button>
-              <div class="msg" id="ppMsg"></div>
-            </form>
-
-            <div id="ppGallery" style="margin-top:18px;">
-              <div class="loading">Loading progress photos...</div>
-            </div>
-          </div>
-        </div>
-
       </div>
+
+      <div class="dash-tabs" style="margin-bottom:24px;">
+        <button class="dash-tab active" data-tab="progress" onclick="switchTab('progress')">Progress</button>
+        <button class="dash-tab" data-tab="community" onclick="switchTab('community')">Community</button>
+      </div>
+
+      <!-- Progress tab -->
+      <div id="tab-progress" class="dash-tab-panel active">
+        <div class="dashboard-grid">
+
+          <!-- Left column: check-in form + progress chart -->
+          <div>
+            <div class="card" style="margin-bottom:24px;">
+              <h3 style="font-size:22px;margin-bottom:20px;">Weight Progress</h3>
+              <div style="position:relative;height:260px;">
+                <canvas id="weightChart"></canvas>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3 style="font-size:22px;margin-bottom:20px;">Weekly Check-In</h3>
+              <form id="checkinForm" onsubmit="handleCheckin(event)">
+
+              <div class="two-col">
+                <div class="form-row">
+                  <label for="ciWeek">Week</label>
+                  <select id="ciWeek" required onchange="loadWeekData()">
+                    <option value="0">Week 0 (baseline)</option>
+                    <option value="1">Week 1</option>
+                    <option value="2">Week 2</option>
+                    <option value="3">Week 3</option>
+                    <option value="4">Week 4 (midpoint)</option>
+                    <option value="5">Week 5</option>
+                    <option value="6">Week 6</option>
+                    <option value="7">Week 7</option>
+                    <option value="8">Week 8 (final)</option>
+                  </select>
+                </div>
+
+                <div class="form-row">
+                  <label for="ciWeight">Current weight (kg)</label>
+                  <input type="number" id="ciWeight" required min="30" max="300" step="0.1" placeholder="80.2">
+                  <p class="hint">Use the same scale, same time of day.</p>
+                </div>
+              </div>
+
+              <div class="form-row hidden" id="photoRow">
+                <label for="ciPhoto">Official weigh-in photo (Week 0, 4, or 8)</label>
+                <input type="file" id="ciPhoto" accept="image/*">
+                <p class="hint">Timestamped photo of you on the scale, numbers visible. Private — admin only.</p>
+              </div>
+
+              <div class="two-col">
+                <div class="form-row">
+                  <label for="ciWorkouts">Workouts this week</label>
+                  <input type="number" id="ciWorkouts" min="0" max="7" value="0">
+                </div>
+                <div class="form-row">
+                  <label for="ciEnergy">Energy (1–5)</label>
+                  <select id="ciEnergy">
+                    <option value="">—</option>
+                    <option value="1">1 — Exhausted</option>
+                    <option value="2">2 — Low</option>
+                    <option value="3">3 — Average</option>
+                    <option value="4">4 — Good</option>
+                    <option value="5">5 — Excellent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="form-row">
+                  <label for="ciAdherence">Adherence (1–5)</label>
+                  <select id="ciAdherence">
+                    <option value="">—</option>
+                    <option value="1">1 — Off plan</option>
+                    <option value="2">2 — Struggled</option>
+                    <option value="3">3 — Mostly on track</option>
+                    <option value="4">4 — On track</option>
+                    <option value="5">5 — Locked in</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label for="ciNotes">Notes (optional)</label>
+                  <input type="text" id="ciNotes" placeholder="Wins, struggles, questions...">
+                </div>
+              </div>
+
+              <button type="submit" class="submit-btn" id="ciSubmitBtn">Save Check-In</button>
+              <div class="msg" id="ciMsg"></div>
+            </form>
+            </div>
+          </div>
+
+          <!-- Right: progress stats + progress photos -->
+          <div class="card-muted">
+            <h3 style="font-size:20px;margin-bottom:16px;">Your progress</h3>
+            <div style="display:grid;gap:12px;">
+              <div class="progress-stat">
+                <span class="stat-label">Baseline weight</span>
+                <span class="stat-value" id="statStart">—</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-label">Latest weight</span>
+                <span class="stat-value" id="statLatest">—</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-label">Change</span>
+                <span class="stat-value positive" id="statChange">—</span>
+              </div>
+              <div class="progress-stat">
+                <span class="stat-label">Check-ins logged</span>
+                <span class="stat-value" id="statWeeks">—</span>
+              </div>
+            </div>
+            <p class="note">Remember: only rank and % progress appear on the public leaderboard. Your raw weight stays private.</p>
+
+            <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px;">
+              <h3 style="font-size:20px;margin-bottom:14px;">Progress Photos</h3>
+              <form id="progressPhotoForm" onsubmit="handleProgressPhoto(event)">
+                <div class="form-row">
+                  <label for="ppFile">Upload a progress photo</label>
+                  <input type="file" id="ppFile" accept="image/*" required>
+                  <p class="hint">Optional progress shot. Private — only you and the organiser can see it.</p>
+                </div>
+                <button type="submit" class="submit-btn" id="ppSubmitBtn">Upload Photo</button>
+                <div class="msg" id="ppMsg"></div>
+              </form>
+
+              <div id="ppGallery" style="margin-top:18px;">
+                <div class="loading">Loading progress photos...</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Community tab -->
+      <div id="tab-community" class="dash-tab-panel">
+        <div class="card" style="padding:0;overflow:hidden;">
+          <div style="padding:20px 24px;border-bottom:1px solid var(--line);background:var(--paper-3);">
+            <h3 style="font-size:20px;margin:0;">Cohort Chat</h3>
+            <p style="margin:4px 0 0;font-size:13px;color:var(--ink-soft);">Community, support, and camaraderie — scoped to your cohort only.</p>
+          </div>
+
+          <div id="pinnedMessages" class="chat-pinned" style="display:none;"></div>
+
+          <div id="chatMessages" class="chat-feed">
+            <div class="loading">Loading messages...</div>
+          </div>
+
+          <div style="padding:16px 20px;border-top:1px solid var(--line);background:var(--paper-3);">
+            <form id="chatForm" onsubmit="sendChatMessage(event)" style="display:flex;gap:10px;align-items:flex-start;">
+              <div class="form-row" style="flex:1;margin:0;">
+                <label for="chatInput" style="position:absolute;left:-9999px;">Message</label>
+                <input type="text" id="chatInput" maxlength="500" placeholder="Say something to your cohort..." autocomplete="off">
+              </div>
+              <button type="submit" class="submit-btn" id="chatSendBtn" style="width:auto;padding:14px 22px;">Send</button>
+            </form>
+            <div class="msg" id="chatMsg" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -215,6 +251,8 @@
   let currentCheckins = {};
   let weightChart = null;
   let activeWeek = null;
+  let chatSubscription = null;
+  let chatMessages = [];
 
   function showMsg(el, text, type){
     el.textContent = text;
@@ -224,6 +262,21 @@
   function fmtDate(iso){
     if(!iso) return '—';
     return new Date(iso).toLocaleString(undefined, { weekday:'short', year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+
+  function timeAgo(iso){
+    if(!iso) return '';
+    const then = new Date(iso).getTime();
+    const now = Date.now();
+    const seconds = Math.floor((now - then) / 1000);
+    if(seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if(minutes < 60) return minutes + 'm ago';
+    const hours = Math.floor(minutes / 60);
+    if(hours < 24) return hours + 'h ago';
+    const days = Math.floor(hours / 24);
+    if(days < 7) return days + 'd ago';
+    return new Date(iso).toLocaleDateString();
   }
 
   function currentWeekForChallenge(challenge){
@@ -239,6 +292,19 @@
     const diffMs = now - start;
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     return Math.min(8, Math.max(1, Math.floor(diffDays / 7)));
+  }
+
+  function switchTab(tab){
+    document.querySelectorAll('.dash-tab').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('.dash-tab-panel').forEach(function(panel){
+      panel.classList.toggle('active', panel.id === 'tab-' + tab);
+    });
+    if(tab === 'community' && currentChallenge){
+      loadChatMessages();
+      subscribeToChat();
+    }
   }
 
   async function init(){
@@ -312,13 +378,15 @@
       document.getElementById('challengeNoticeTitle').textContent = 'Challenge locked';
       document.getElementById('challengeNoticeText').textContent =
         'This cohort finished on ' + fmtDate(challenge.ends_at) + '. The leaderboard is archived. You can still view your history below.';
-      // Show dashboard in read-only-ish mode but no check-ins.
       document.getElementById('dashboardContent').classList.remove('hidden');
       document.getElementById('checkinForm').style.display = 'none';
       renderChallengeInfo();
       await loadCheckins();
       renderWeightChart();
       await loadProgressPhotos();
+      // Chat is still available for archived cohorts to celebrate / stay in touch.
+      loadChatMessages();
+      subscribeToChat();
       return;
     }
 
@@ -333,7 +401,6 @@
     document.getElementById('dashboardContent').classList.remove('hidden');
     renderChallengeInfo();
 
-    // Default week selection to the currently open week.
     const ciWeek = document.getElementById('ciWeek');
     if(activeWeek !== null){
       ciWeek.value = String(activeWeek);
@@ -343,6 +410,10 @@
     await loadProgressPhotos();
     loadWeekData();
     renderWeightChart();
+
+    // Preload chat data but stay on Progress tab.
+    loadChatMessages();
+    subscribeToChat();
   }
 
   function renderChallengeInfo(){
@@ -504,7 +575,6 @@
       photoRow.classList.add('hidden');
     }
 
-    // Disable weeks that are not currently open if challenge is active.
     const weekSelect = document.getElementById('ciWeek');
     for(let i = 0; i <= 8; i++){
       const opt = weekSelect.querySelector('option[value="' + i + '"]');
@@ -588,7 +658,6 @@
         photoPath = await uploadPhoto(photoFile, week);
       }
 
-      // Official weigh-in weeks require a photo.
       if([0,4,8].includes(week) && !photoPath){
         showMsg(msg, 'A photo is required for Week 0, 4, and 8 official weigh-ins.', 'error');
         btn.disabled = false;
@@ -718,6 +787,216 @@
     }
   }
 
+  // ---------- community chat ----------
+
+  async function loadChatMessages(){
+    if(!currentChallenge) return;
+    const container = document.getElementById('chatMessages');
+
+    try{
+      const { data, error } = await client
+        .from('chat_messages')
+        .select('*, profiles:user_id (full_name)')
+        .eq('challenge_id', currentChallenge.id)
+        .order('created_at', { ascending: true });
+
+      if(error) throw error;
+      chatMessages = data || [];
+      renderChat();
+    } catch(err){
+      console.error('loadChatMessages error:', err);
+      container.innerHTML = '<div class="empty">Could not load messages. Try switching tabs or refreshing.</div>';
+    }
+  }
+
+  function renderChat(){
+    const container = document.getElementById('chatMessages');
+    const pinnedContainer = document.getElementById('pinnedMessages');
+    if(!container) return;
+
+    const pinned = chatMessages.filter(function(m){ return m.is_pinned; });
+    const normal = chatMessages.filter(function(m){ return !m.is_pinned; });
+
+    if(pinned.length){
+      pinnedContainer.style.display = 'block';
+      pinnedContainer.innerHTML = '<div style="font-size:11px;font-family:IBM Plex Mono,monospace;text-transform:uppercase;letter-spacing:0.08em;color:var(--gold);margin-bottom:10px;">Pinned announcement</div>' +
+        pinned.map(function(m){ return renderMessageBubble(m, true); }).join('');
+    } else {
+      pinnedContainer.style.display = 'none';
+      pinnedContainer.innerHTML = '';
+    }
+
+    if(!normal.length){
+      container.innerHTML = '<div class="empty" style="padding:40px 20px;">No messages yet. Be the first to say hello to your cohort!</div>';
+      return;
+    }
+
+    container.innerHTML = normal.map(renderMessageBubble).join('');
+    scrollToChatBottom();
+  }
+
+  function renderMessageBubble(m, isPinned){
+    const isMe = m.user_id === currentUser.id;
+    const isAdmin = currentProfile.is_admin;
+    const name = m.profiles?.full_name || 'Unknown';
+    const displayName = formatChatName(name);
+    const time = timeAgo(m.created_at);
+    const fullTime = fmtDate(m.created_at);
+
+    let actions = '';
+    if(isAdmin){
+      actions = '<div class="chat-actions">' +
+        '<button onclick="deleteChatMessage(\'' + m.id + '\')">Delete</button>' +
+        '<button onclick="togglePinChatMessage(\'' + m.id + '\', ' + !m.is_pinned + ')">' + (m.is_pinned ? 'Unpin' : 'Pin') + '</button>' +
+      '</div>';
+    } else if(isMe){
+      actions = '<div class="chat-actions">' +
+        '<button onclick="deleteChatMessage(\'' + m.id + '\')">Delete</button>' +
+      '</div>';
+    }
+
+    return '<div class="chat-bubble ' + (isMe ? 'me' : 'other') + (isPinned ? ' pinned' : '') + '" data-id="' + m.id + '">' +
+      '<div class="chat-meta">' +
+        '<span class="chat-name">' + escapeHtml(displayName) + '</span>' +
+        '<span class="chat-time" title="' + escapeHtml(fullTime) + '">' + escapeHtml(time) + '</span>' +
+      '</div>' +
+      '<div class="chat-content">' + escapeHtml(m.content) + '</div>' +
+      actions +
+    '</div>';
+  }
+
+  function formatChatName(fullName){
+    if(!fullName) return '?';
+    const parts = fullName.trim().split(/\s+/);
+    if(parts.length === 1) return parts[0];
+    return parts[0] + ' ' + parts[parts.length - 1][0] + '.';
+  }
+
+  function scrollToChatBottom(){
+    const container = document.getElementById('chatMessages');
+    if(container) container.scrollTop = container.scrollHeight;
+  }
+
+  function subscribeToChat(){
+    if(chatSubscription) return;
+    if(!currentChallenge) return;
+
+    chatSubscription = client
+      .channel('cohort-chat-' + currentChallenge.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: 'challenge_id=eq.' + currentChallenge.id
+      }, function(payload){
+        const newMsg = payload.new;
+        // Avoid duplicates if we already rendered it optimistically.
+        if(!chatMessages.find(function(m){ return m.id === newMsg.id; })){
+          chatMessages.push(newMsg);
+          renderChat();
+        }
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: 'challenge_id=eq.' + currentChallenge.id
+      }, function(payload){
+        chatMessages = chatMessages.filter(function(m){ return m.id !== payload.old.id; });
+        renderChat();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: 'challenge_id=eq.' + currentChallenge.id
+      }, function(payload){
+        const idx = chatMessages.findIndex(function(m){ return m.id === payload.new.id; });
+        if(idx >= 0){
+          chatMessages[idx] = payload.new;
+        } else {
+          chatMessages.push(payload.new);
+        }
+        renderChat();
+      })
+      .subscribe();
+  }
+
+  async function sendChatMessage(e){
+    e.preventDefault();
+    if(!currentChallenge) return;
+
+    const input = document.getElementById('chatInput');
+    const btn = document.getElementById('chatSendBtn');
+    const msg = document.getElementById('chatMsg');
+    msg.className = 'msg';
+
+    const content = input.value.trim();
+    if(!content){
+      showMsg(msg, 'Please enter a message.', 'error');
+      return;
+    }
+    if(content.length > 500){
+      showMsg(msg, 'Message must be under 500 characters.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    try{
+      const { data, error } = await client
+        .from('chat_messages')
+        .insert({
+          challenge_id: currentChallenge.id,
+          user_id: currentUser.id,
+          content: content
+        })
+        .select('*, profiles:user_id (full_name)')
+        .single();
+
+      if(error) throw error;
+
+      input.value = '';
+      if(data && !chatMessages.find(function(m){ return m.id === data.id; })){
+        chatMessages.push(data);
+        renderChat();
+      }
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Could not send message. Try again.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send';
+    }
+  }
+
+  async function deleteChatMessage(messageId){
+    if(!confirm('Delete this message?')) return;
+    try{
+      const { error } = await client.from('chat_messages').delete().eq('id', messageId);
+      if(error) throw error;
+      chatMessages = chatMessages.filter(function(m){ return m.id !== messageId; });
+      renderChat();
+    } catch(err){
+      alert('Could not delete message: ' + err.message);
+    }
+  }
+
+  async function togglePinChatMessage(messageId, pinned){
+    try{
+      const { error } = await client.from('chat_messages').update({ is_pinned: pinned }).eq('id', messageId);
+      if(error) throw error;
+      const m = chatMessages.find(function(x){ return x.id === messageId; });
+      if(m){
+        m.is_pinned = pinned;
+        renderChat();
+      }
+    } catch(err){
+      alert('Could not update message: ' + err.message);
+    }
+  }
+
   function escapeHtml(str){
     const d = document.createElement('div');
     d.textContent = str;
@@ -725,6 +1004,9 @@
   }
 
   async function handleSignOut(){
+    if(chatSubscription){
+      await client.removeChannel(chatSubscription);
+    }
     await window.auth.signOut();
     window.location.href = 'index.html';
   }

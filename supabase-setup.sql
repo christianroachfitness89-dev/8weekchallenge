@@ -439,6 +439,63 @@ create policy "Admins can read all progress photos"
   to authenticated
   using (bucket_id = 'progress-photos' and public.is_admin(auth.uid()));
 
+-- ---------- chat / community feed ----------
+-- A lightweight real-time chat feed scoped to each challenge cohort.
+
+create table if not exists public.chat_messages (
+  id uuid default gen_random_uuid() primary key,
+  challenge_id uuid references public.challenges on delete cascade not null,
+  user_id uuid references auth.users on delete cascade not null,
+  content text not null check (length(content) between 1 and 500),
+  is_pinned boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_chat_messages_challenge on public.chat_messages(challenge_id, created_at desc);
+
+alter table public.chat_messages enable row level security;
+
+-- Users can read messages in their own cohort only.
+create policy "Users can read cohort chat"
+  on public.chat_messages
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.challenge_id = chat_messages.challenge_id
+    )
+  );
+
+-- Users can post to their own cohort only.
+create policy "Users can post in cohort chat"
+  on public.chat_messages
+  for insert
+  to authenticated
+  with check (
+    auth.uid() = user_id and
+    exists (
+      select 1 from public.profiles p
+      where p.id = auth.uid() and p.challenge_id = chat_messages.challenge_id
+    )
+  );
+
+-- Only admins can delete or pin messages.
+create policy "Admins can manage chat messages"
+  on public.chat_messages
+  for all
+  to authenticated
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
+
+-- Enable realtime for chat messages.
+begin;
+  drop publication if exists supabase_realtime;
+  create publication supabase_realtime;
+commit;
+
+alter publication supabase_realtime add table public.chat_messages;
+
 -- ---------- clean up legacy single-cohort challenge_settings table ----------
 
 drop table if exists public.challenge_settings cascade;

@@ -32,6 +32,7 @@ This creates:
 - `profiles` table (one row per entrant, with a `challenge_id` assignment)
 - `checkins` table (weekly weigh-ins, tied to a specific challenge)
 - `progress_photos` table (private progress photos per cohort)
+- `chat_messages` table (real-time cohort community chat)
 - Row Level Security policies (entrants only see their own data; admins see everything)
 - A public `get_leaderboard(target_challenge_id)` function for per-cohort leaderboards
 - Private `weighin-photos` and `progress-photos` storage buckets
@@ -147,6 +148,7 @@ You can create multiple cohorts. Each entrant is assigned to exactly one cohort 
 | Anytime | Mark entrants paid and assign them to a cohort in `admin.html` after confirming their Stripe payment. |
 | Week 4 & 8 | Remind entrants to upload their official weigh-in photo. |
 | After Week 8 | Click **Lock / Archive** on the cohort in `admin.html` to freeze the leaderboard and stop further check-ins. |
+| Anytime | Monitor the **Cohort Chat** section in `admin.html`. Pin announcements, delete off-topic or harmful messages, and keep the community positive. |
 
 ---
 
