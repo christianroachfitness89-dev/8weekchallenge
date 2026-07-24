@@ -373,45 +373,38 @@
     const start = new Date(challenge.starts_at);
     const end = new Date(challenge.ends_at);
 
-    if(challenge.locked || now > end){
-      document.getElementById('challengeNotice').classList.remove('hidden');
-      document.getElementById('challengeNoticeTitle').textContent = 'Challenge locked';
-      document.getElementById('challengeNoticeText').textContent =
-        'This cohort finished on ' + fmtDate(challenge.ends_at) + '. The leaderboard is archived. You can still view your history below.';
-      document.getElementById('dashboardContent').classList.remove('hidden');
-      document.getElementById('checkinForm').style.display = 'none';
-      renderChallengeInfo();
-      await loadCheckins();
-      renderWeightChart();
-      await loadProgressPhotos();
-      // Chat is still available for archived cohorts to celebrate / stay in touch.
-      loadChatMessages();
-      subscribeToChat();
-      return;
-    }
-
-    if(now < baseline){
-      document.getElementById('challengeNotice').classList.remove('hidden');
-      document.getElementById('challengeNoticeTitle').textContent = 'Baseline opens soon';
-      document.getElementById('challengeNoticeText').textContent =
-        'Your challenge starts on ' + fmtDate(challenge.starts_at) + '. Baseline weigh-in opens 48 hours before at ' + fmtDate(challenge.baseline_opens_at) + '.';
-      return;
-    }
+    const beforeBaseline = now < baseline;
+    const archived = challenge.locked || now > end;
 
     document.getElementById('dashboardContent').classList.remove('hidden');
     renderChallengeInfo();
 
-    const ciWeek = document.getElementById('ciWeek');
-    if(activeWeek !== null){
-      ciWeek.value = String(activeWeek);
+    if(archived){
+      document.getElementById('challengeNotice').classList.remove('hidden');
+      document.getElementById('challengeNoticeTitle').textContent = 'Challenge locked';
+      document.getElementById('challengeNoticeText').textContent =
+        'This cohort finished on ' + fmtDate(challenge.ends_at) + '. The leaderboard is archived. You can still view your history and chat below.';
+      document.getElementById('checkinForm').style.display = 'none';
+    } else if(beforeBaseline){
+      document.getElementById('challengeNotice').classList.remove('hidden');
+      document.getElementById('challengeNoticeTitle').textContent = 'Baseline opens soon';
+      document.getElementById('challengeNoticeText').textContent =
+        'Your challenge starts on ' + fmtDate(challenge.starts_at) + '. Baseline weigh-in opens 48 hours before at ' + fmtDate(challenge.baseline_opens_at) + '. The Community tab is open now.';
+      // Disable check-in form until baseline opens.
+      setCheckinEditable(false, 'Check-ins open when the baseline window starts at ' + fmtDate(challenge.baseline_opens_at) + '.');
+    } else {
+      const ciWeek = document.getElementById('ciWeek');
+      if(activeWeek !== null){
+        ciWeek.value = String(activeWeek);
+      }
+      loadWeekData();
     }
 
     await loadCheckins();
     await loadProgressPhotos();
-    loadWeekData();
     renderWeightChart();
 
-    // Preload chat data but stay on Progress tab.
+    // Chat is available as soon as an entrant is assigned to a cohort.
     loadChatMessages();
     subscribeToChat();
   }
