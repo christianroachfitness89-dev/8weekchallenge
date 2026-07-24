@@ -27,10 +27,10 @@
 
   <!-- HERO -->
   <section class="hero-like" style="padding:64px 0 40px;">
-    <div class="eyebrow">Community Challenge · 8 Weeks · Track in KG</div>
-    <h1>Show up.<br>Log it.<br><em style="color:var(--red);">Win the pool.</em></h1>
-    <p class="hero-sub" style="font-size:18px;line-height:1.55;color:var(--ink-soft);max-width:520px;margin:0 0 32px;">
-      An 8-week remote accountability challenge for our community. Check in weekly, stay consistent, and compete for a $2,000 prize pool. All weights are tracked in kilograms.
+    <div class="eyebrow" id="heroEyebrow">Community Challenge · 8 Weeks · Track in KG</div>
+    <h1 id="heroHeadline">Show up.<br>Log it.<br><em style="color:var(--red);">Win the pool.</em></h1>
+    <p class="hero-sub" id="heroSub" style="font-size:18px;line-height:1.55;color:var(--ink-soft);max-width:520px;margin:0 0 32px;">
+      An 8-week remote accountability challenge for our community. Check in weekly, stay consistent, and compete for a prize pool. All weights are tracked in kilograms.
     </p>
     <div class="hero-actions" style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:56px;">
       <a href="signup.html" class="btn-primary">Claim Your Spot</a>
@@ -39,13 +39,13 @@
 
     <div class="ticket">
       <div class="ticket-main">
-        <div class="ticket-num">Entry Pass · Cohort Opens Soon</div>
+        <div class="ticket-num">Entry Pass · Challenge Opens Soon</div>
         <div class="ticket-title">Admit One, 8 Week Cycle</div>
         <div class="ticket-desc">Winner determined by % of body weight lost, Week 0 to Week 8. Weekly check-ins required to stay eligible.</div>
       </div>
       <div class="perf"></div>
       <div class="ticket-stub">
-        <div class="stub-amt">$2,000</div>
+        <div class="stub-amt" id="ticketPrize">$2,000</div>
         <div class="stub-label">Prize Pool</div>
       </div>
     </div>
@@ -86,8 +86,8 @@
     <div class="pricing-grid">
       <div class="price-card">
         <div class="price-name">Standard</div>
-        <div class="price-num">$35<span>/ week</span></div>
-        <div class="price-total">$280 total · 8 weeks</div>
+        <div class="price-num" id="standardPerWeek">$35<span>/ week</span></div>
+        <div class="price-total" id="standardTotal">$280 total · 8 weeks</div>
         <ul class="price-list">
           <li>Private community group access</li>
           <li>Weekly check-in form &amp; leaderboard</li>
@@ -99,8 +99,8 @@
       <div class="price-card featured">
         <div class="price-tag">+ Coaching</div>
         <div class="price-name">Face-to-Face</div>
-        <div class="price-num">$99<span>/ week</span></div>
-        <div class="price-total">$792 total · 8 weeks</div>
+        <div class="price-num" id="f2fPerWeek">$99<span>/ week</span></div>
+        <div class="price-total" id="f2fTotal">$792 total · 8 weeks</div>
         <ul class="price-list">
           <li>Everything in Standard</li>
           <li>Weekly in-person coaching session</li>
@@ -116,23 +116,23 @@
   <section id="prizes">
     <div class="sec-head">
       <div class="sec-eyebrow">On The Line</div>
-      <h2>$2,000 pool, split three ways</h2>
+      <h2 id="prizeHeadline">$2,000 pool, split three ways</h2>
     </div>
     <div class="podium">
       <div class="prow gold">
         <div class="prank">1st</div>
         <div><div class="pname">Top % body weight lost</div><div class="psub">50% of pool</div></div>
-        <div class="pamt">$1,000</div>
+        <div class="pamt" id="prizeFirst">$1,000</div>
       </div>
       <div class="prow silver">
         <div class="prank">2nd</div>
         <div><div class="pname">Runner-up</div><div class="psub">30% of pool</div></div>
-        <div class="pamt">$600</div>
+        <div class="pamt" id="prizeSecond">$600</div>
       </div>
       <div class="prow bronze">
         <div class="prank">3rd</div>
         <div><div class="pname">Third place</div><div class="psub">20% of pool</div></div>
-        <div class="pamt">$400</div>
+        <div class="pamt" id="prizeThird">$400</div>
       </div>
     </div>
   </section>
@@ -156,7 +156,7 @@
       </ul>
     </div>
     <div class="text-center mt-3">
-      <a href="signup.html" class="btn-primary">Enter Now - $280</a>
+      <a href="signup.html" class="btn-primary" id="rulesCta">Enter Now - $280</a>
     </div>
   </section>
 
@@ -168,6 +168,65 @@
     <p class="foot-text mt-2">Already entered? <a href="login.html" style="color:var(--red-dark);">Log in here</a>.</p>
   </div>
 </footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/site-settings.js"></script>
+<script>
+  (function () {
+    const fallback = {
+      eyebrow: 'Community Challenge · 8 Weeks · Track in KG',
+      headline: 'Show up.<br>Log it.<br><em style="color:var(--red);">Win the pool.</em>',
+      subheadline: 'An 8-week remote accountability challenge for our community. Check in weekly, stay consistent, and compete for a prize pool. All weights are tracked in kilograms.',
+      prize_pool: 2000,
+      standard_price: 280,
+      f2f_price: 792
+    };
+
+    function setHtml(id, html) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = html;
+    }
+
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    function apply(s) {
+      const fmt = window.siteSettings.formatCurrency;
+      const pw = window.siteSettings.formatPerWeek;
+
+      setHtml('heroEyebrow', s.eyebrow || fallback.eyebrow);
+      setHtml('heroHeadline', s.headline || fallback.headline);
+      setHtml('heroSub', s.subheadline || fallback.subheadline);
+
+      const pool = s.prize_pool || fallback.prize_pool;
+      const standard = s.standard_price || fallback.standard_price;
+      const f2f = s.f2f_price || fallback.f2f_price;
+
+      setText('ticketPrize', fmt(pool));
+      setHtml('standardPerWeek', pw(standard) + '<span>/ week</span>');
+      setText('standardTotal', fmt(standard) + ' total · 8 weeks');
+      setHtml('f2fPerWeek', pw(f2f) + '<span>/ week</span>');
+      setText('f2fTotal', fmt(f2f) + ' total · 8 weeks');
+
+      setText('prizeHeadline', fmt(pool) + ' pool, split three ways');
+      setText('prizeFirst', fmt(pool * 0.5));
+      setText('prizeSecond', fmt(pool * 0.3));
+      setText('prizeThird', fmt(pool * 0.2));
+
+      setText('rulesCta', 'Enter Now - ' + fmt(standard));
+
+      document.title = (s.challenge_name || '8-Week Challenge') + ' · Sign Up & Transform';
+    }
+
+    window.siteSettings.load().then(apply).catch(function (err) {
+      console.error('Failed to load competition settings', err);
+      apply(fallback);
+    });
+  })();
+</script>
 
 </body>
 </html>

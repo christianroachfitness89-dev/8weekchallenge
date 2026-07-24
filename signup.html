@@ -76,12 +76,12 @@
           <label class="tier-opt checked" id="opt-standard">
             <input type="radio" name="tier" value="standard" checked onchange="updateTier(this)">
             <div class="t-name">Standard</div>
-            <div class="t-price">$35/week · $280 total</div>
+            <div class="t-price" id="standardTierPrice">$35/week · $280 total</div>
           </label>
           <label class="tier-opt" id="opt-f2f">
             <input type="radio" name="tier" value="f2f" onchange="updateTier(this)">
             <div class="t-name">Face-to-Face</div>
-            <div class="t-price">$99/week · $792 total</div>
+            <div class="t-price" id="f2fTierPrice">$99/week · $792 total</div>
           </label>
         </div>
       </div>
@@ -114,17 +114,26 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/site-settings.js"></script>
 <script>
-  // Replace these with your own Stripe Payment Link URLs (see SETUP.md).
-  const STRIPE_LINKS = {
-    standard: 'https://buy.stripe.com/28E28s92p1Zy8my6oY5os0x',
-    f2f: 'https://buy.stripe.com/dRmeVebax33C1Ya5kU5os0B'
-  };
+  const STRIPE_LINKS = { standard: '', f2f: '' };
+  const TIER_PRICES = { standard: 280, f2f: 792 };
+
+  function formatCurrency(amount) {
+    if (amount === null || amount === undefined || isNaN(amount)) return '';
+    return '$' + Number(amount).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+
+  function formatPerWeek(total) {
+    if (!total && total !== 0) return '';
+    return '$' + Math.round(total / 8);
+  }
 
   function updateTier(input){
     document.getElementById('opt-standard').classList.toggle('checked', input.value === 'standard');
     document.getElementById('opt-f2f').classList.toggle('checked', input.value === 'f2f');
-    document.getElementById('btnPrice').textContent = input.value === 'f2f' ? '$792' : '$280';
+    const price = input.value === 'f2f' ? TIER_PRICES.f2f : TIER_PRICES.standard;
+    document.getElementById('btnPrice').textContent = formatCurrency(price);
   }
 
   function showMsg(el, text, type){
@@ -137,16 +146,39 @@
     return params.get(name);
   }
 
-  // Pre-select tier from URL if present.
+  async function loadSettings(){
+    try {
+      const s = await window.siteSettings.load();
+      if (!s) return;
+
+      TIER_PRICES.standard = Number(s.standard_price) || 280;
+      TIER_PRICES.f2f = Number(s.f2f_price) || 792;
+
+      STRIPE_LINKS.standard = s.standard_stripe_link || '';
+      STRIPE_LINKS.f2f = s.f2f_stripe_link || '';
+
+      document.getElementById('standardTierPrice').textContent = formatPerWeek(TIER_PRICES.standard) + '/week · ' + formatCurrency(TIER_PRICES.standard) + ' total';
+      document.getElementById('f2fTierPrice').textContent = formatPerWeek(TIER_PRICES.f2f) + '/week · ' + formatCurrency(TIER_PRICES.f2f) + ' total';
+
+      const selected = document.querySelector('input[name="tier"]:checked');
+      updateTier(selected);
+    } catch (err) {
+      console.error('Settings load failed', err);
+    }
+  }
+
   (function(){
     const tier = getParam('tier');
     if(tier === 'f2f'){
       const radio = document.querySelector('input[name="tier"][value="f2f"]');
       if(radio){
         radio.checked = true;
-        updateTier(radio);
       }
     }
+    loadSettings().then(function(){
+      const checked = document.querySelector('input[name="tier"]:checked');
+      if (checked) updateTier(checked);
+    });
   })();
 
   async function handleSubmit(e){
@@ -179,8 +211,8 @@
       return;
     }
 
-    if(STRIPE_LINKS.standard.includes('YOUR_') || STRIPE_LINKS.f2f.includes('YOUR_')){
-      showMsg(msg, 'Stripe payment links are not configured yet. Please contact the organiser.', 'error');
+    if(!STRIPE_LINKS[tier] || STRIPE_LINKS[tier].includes('YOUR_')){
+      showMsg(msg, 'Payment link is not configured yet. Please contact the organiser.', 'error');
       return;
     }
 
@@ -199,11 +231,10 @@
       if(!user){
         showMsg(msg, 'Sign-up succeeded but no user was returned. Please try logging in.', 'info');
         btn.disabled = false;
-        btn.textContent = 'Create Account &amp; Pay $' + (tier === 'f2f' ? '792' : '280');
+        btn.innerHTML = 'Create Account &amp; Pay <span id="btnPrice">' + formatCurrency(TIER_PRICES[tier]) + '</span>';
         return;
       }
 
-      // Show confirmation and redirect to Stripe.
       document.getElementById('signupForm').style.display = 'none';
       document.getElementById('confirmBox').classList.add('show');
 
@@ -219,7 +250,7 @@
       console.error(err);
       showMsg(msg, err.message || 'Something went wrong creating your account. Please try again.', 'error');
       btn.disabled = false;
-      btn.textContent = 'Create Account &amp; Pay $' + (tier === 'f2f' ? '792' : '280');
+      btn.innerHTML = 'Create Account &amp; Pay <span id="btnPrice">' + formatCurrency(TIER_PRICES[tier]) + '</span>';
     }
   }
 </script>

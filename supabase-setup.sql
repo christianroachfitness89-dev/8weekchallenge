@@ -510,6 +510,53 @@ commit;
 
 alter publication supabase_realtime add table public.chat_messages;
 
+-- ---------- competition settings ----------
+-- Public-facing content and pricing managed by admins.
+
+create table if not exists public.competition_settings (
+  id integer primary key default 1 check (id = 1),
+  updated_at timestamptz not null default now(),
+  challenge_name text not null default '8-Week Challenge',
+  headline text not null default 'Show up. Log it. Win the transformation.',
+  subheadline text not null default 'An elite 8-week accountability experience.',
+  eyebrow text not null default 'Private Coaching Challenge · 8 Weeks · Track in KG',
+  intro_video_url text,
+  prize_pool numeric not null default 2000,
+  standard_price numeric not null default 280,
+  standard_stripe_link text not null default 'https://buy.stripe.com/28E28s92p1Zy8my6oY5os0x',
+  f2f_price numeric not null default 792,
+  f2f_stripe_link text not null default 'https://buy.stripe.com/dRmeVebax33C1Ya5kU5os0B'
+);
+
+alter table public.competition_settings enable row level security;
+
+drop policy if exists "Anyone can read competition settings" on public.competition_settings;
+drop policy if exists "Admins can manage competition settings" on public.competition_settings;
+
+create policy "Anyone can read competition settings"
+  on public.competition_settings
+  for select
+  to anon
+  using (true);
+
+create policy "Anyone can read competition settings authenticated"
+  on public.competition_settings
+  for select
+  to authenticated
+  using (true);
+
+create policy "Admins can manage competition settings"
+  on public.competition_settings
+  for all
+  to authenticated
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
+
+-- Seed the single row on first run.
+insert into public.competition_settings (id)
+values (1)
+on conflict (id) do nothing;
+
 -- ---------- clean up legacy single-cohort challenge_settings table ----------
 
 drop table if exists public.challenge_settings cascade;

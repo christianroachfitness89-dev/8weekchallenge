@@ -36,6 +36,7 @@ This creates:
 - Row Level Security policies (entrants only see their own data; admins see everything)
 - A public `get_leaderboard(target_challenge_id)` function for per-cohort leaderboards
 - Private `weighin-photos` and `progress-photos` storage buckets
+- `competition_settings` table (single-row public content: prize pool, prices, Stripe links, hero copy, intro video)
 - Triggers that keep the profile row in sync with the auth user and enforce the challenge lifecycle
 
 ---
@@ -78,10 +79,9 @@ This creates:
 3. For each Payment Link, set the **After payment** redirect URL to:
    `https://YOUR_NETLIFY_SITE_URL/payment-success.html`
 4. Copy each Payment Link URL.
-5. Open `signup.html` and replace:
-   - `https://buy.stripe.com/YOUR_STANDARD_PAYMENT_LINK` with the Standard link
-   - `https://buy.stripe.com/YOUR_F2F_PAYMENT_LINK` with the F2F link
-6. Save the file.
+5. Open `admin.html`, log in as an admin, and go to **Competition Settings**.
+6. Paste the Standard and Face-to-Face Stripe Payment Links and set the prices.
+7. Save. The homepage and signup page now use those values automatically.
 
 > The sign-up page automatically appends the entrant’s `client_reference_id` and `prefilled_email` to the Stripe link, so you can match payments to users in the Stripe Dashboard.
 

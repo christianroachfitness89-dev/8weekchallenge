@@ -160,6 +160,72 @@
     <p class="note">Use the Stripe Dashboard (filtered by client_reference_id) to confirm payments, then mark entrants paid here to unlock their dashboard. Safety flags appear for any entrant losing more than ~3% body weight in a single week.</p>
   </section>
 
+  <!-- COMPETITION SETTINGS -->
+  <section style="padding:36px 0;">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Public Site</div>
+      <h2>Competition Settings</h2>
+    </div>
+
+    <div class="card" id="settingsCard" style="margin-bottom:28px;">
+      <div class="msg" id="settingsMsg"></div>
+      <div class="two-col">
+        <div class="form-row">
+          <label for="setName">Challenge name</label>
+          <input type="text" id="setName">
+        </div>
+        <div class="form-row">
+          <label for="setEyebrow">Eyebrow text</label>
+          <input type="text" id="setEyebrow">
+          <p class="hint">Small line above the headline. Avoid em dashes.</p>
+        </div>
+      </div>
+      <div class="form-row">
+        <label for="setHeadline">Hero headline</label>
+        <textarea id="setHeadline" rows="2"></textarea>
+        <p class="hint">Use &lt;br&gt; for line breaks. HTML is allowed.</p>
+      </div>
+      <div class="form-row">
+        <label for="setSub">Hero subheadline</label>
+        <textarea id="setSub" rows="3"></textarea>
+      </div>
+      <div class="form-row">
+        <label for="setVideo">Intro video URL</label>
+        <input type="url" id="setVideo" placeholder="https://youtube.com/embed/... or hosted MP4">
+        <p class="hint">Leave blank to hide the video slot on the homepage.</p>
+      </div>
+      <div class="two-col">
+        <div class="form-row">
+          <label for="setPrize">Prize pool ($)</label>
+          <input type="number" id="setPrize" min="0" step="1">
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="form-row">
+          <label for="setStandardPrice">Standard total price ($)</label>
+          <input type="number" id="setStandardPrice" min="0" step="1">
+        </div>
+        <div class="form-row">
+          <label for="setStandardLink">Standard Stripe payment link</label>
+          <input type="url" id="setStandardLink" placeholder="https://buy.stripe.com/...">
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="form-row">
+          <label for="setF2FPrice">Face-to-Face total price ($)</label>
+          <input type="number" id="setF2FPrice" min="0" step="1">
+        </div>
+        <div class="form-row">
+          <label for="setF2FLink">Face-to-Face Stripe payment link</label>
+          <input type="url" id="setF2FLink" placeholder="https://buy.stripe.com/...">
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:12px;">
+        <button type="button" class="submit-btn" id="saveSettingsBtn" onclick="saveSettings()" style="width:auto;padding:14px 24px;">Save Settings</button>
+      </div>
+    </div>
+  </section>
+
   <section style="padding:36px 0;">
     <div class="sec-head">
       <div class="sec-eyebrow">Community Moderation</div>
@@ -190,6 +256,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/site-settings.js"></script>
 <script>
   const client = window.sb;
   let allProfiles = [];
@@ -753,7 +820,77 @@
     window.location.href = 'index.html';
   }
 
-  init();
+  let currentSettings = null;
+
+  async function loadSettingsPanel(){
+    try{
+      const s = await window.siteSettings.load();
+      if(!s) throw new Error('No settings returned');
+      currentSettings = s;
+      document.getElementById('setName').value = s.challenge_name || '';
+      document.getElementById('setEyebrow').value = s.eyebrow || '';
+      document.getElementById('setHeadline').value = s.headline || '';
+      document.getElementById('setSub').value = s.subheadline || '';
+      document.getElementById('setVideo').value = s.intro_video_url || '';
+      document.getElementById('setPrize').value = s.prize_pool ?? '';
+      document.getElementById('setStandardPrice').value = s.standard_price ?? '';
+      document.getElementById('setStandardLink').value = s.standard_stripe_link || '';
+      document.getElementById('setF2FPrice').value = s.f2f_price ?? '';
+      document.getElementById('setF2FLink').value = s.f2f_stripe_link || '';
+    } catch(err){
+      console.error(err);
+      const msg = document.getElementById('settingsMsg');
+      showMsg(msg, 'Could not load settings: ' + err.message, 'error');
+    }
+  }
+
+  async function saveSettings(){
+    const btn = document.getElementById('saveSettingsBtn');
+    const msg = document.getElementById('settingsMsg');
+    msg.className = 'msg';
+
+    const payload = {
+      id: 1,
+      updated_at: new Date().toISOString(),
+      challenge_name: document.getElementById('setName').value.trim(),
+      eyebrow: document.getElementById('setEyebrow').value.trim(),
+      headline: document.getElementById('setHeadline').value.trim(),
+      subheadline: document.getElementById('setSub').value.trim(),
+      intro_video_url: document.getElementById('setVideo').value.trim() || null,
+      prize_pool: parseFloat(document.getElementById('setPrize').value),
+      standard_price: parseFloat(document.getElementById('setStandardPrice').value),
+      standard_stripe_link: document.getElementById('setStandardLink').value.trim(),
+      f2f_price: parseFloat(document.getElementById('setF2FPrice').value),
+      f2f_stripe_link: document.getElementById('setF2FLink').value.trim()
+    };
+
+    if(Object.values(payload).some(function(v){ return v === ''; }) && !payload.intro_video_url){
+      // Basic sanity only; allow empty video.
+    }
+
+    if(isNaN(payload.prize_pool) || isNaN(payload.standard_price) || isNaN(payload.f2f_price)){
+      showMsg(msg, 'Prize pool and prices must be valid numbers.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    try{
+      const { error } = await client.from('competition_settings').upsert(payload, { onConflict: 'id' });
+      if(error) throw error;
+      showMsg(msg, 'Settings saved. Changes will appear on the homepage and signup page immediately.', 'success');
+      await loadSettingsPanel();
+    } catch(err){
+      console.error(err);
+      showMsg(msg, err.message || 'Could not save settings.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Save Settings';
+    }
+  }
+
+  init().then(loadSettingsPanel);
 </script>
 
 </body>
