@@ -80,6 +80,16 @@
   .admin-chat-bubble .chat-content{font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
   .admin-chat-actions{display:flex;gap:10px;margin-top:10px;}
 
+  .admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px;border-bottom:1.5px solid var(--line);padding-bottom:8px;}
+  .admin-tab{
+    font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;
+    padding:10px 18px;border-radius:var(--radius);background:transparent;border:1.5px solid transparent;cursor:pointer;
+  }
+  .admin-tab:hover{background:var(--paper-3);}
+  .admin-tab.active{background:var(--ink);color:var(--paper-3);}
+  .admin-panel{display:none;}
+  .admin-panel.active{display:block;}
+
   .forecast-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin:16px 0;}
   .forecast-box{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
   .forecast-box .fb-label{font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;color:var(--ink-soft);}
@@ -116,6 +126,15 @@
       <h2>Challenge Management</h2>
     </div>
 
+    <div class="admin-tabs">
+      <button type="button" class="admin-tab active" data-tab="cohorts" onclick="switchTab('cohorts')">Cohorts</button>
+      <button type="button" class="admin-tab" data-tab="entrants" onclick="switchTab('entrants')">Entrants</button>
+      <button type="button" class="admin-tab" data-tab="settings" onclick="switchTab('settings')">Settings + Forecast</button>
+      <button type="button" class="admin-tab" data-tab="chat" onclick="switchTab('chat')">Chat Moderation</button>
+    </div>
+
+    <!-- COHORTS TAB -->
+    <div class="admin-panel active" id="panel-cohorts">
     <div class="card" style="margin-bottom:28px;">
       <h3 style="font-size:20px;margin-bottom:16px;">Create New Cohort</h3>
       <div class="two-col">
@@ -167,128 +186,140 @@
     <div id="adminContent">
       <div class="loading">Loading entrants...</div>
     </div>
-
-    <p class="note">Use the Stripe Dashboard (filtered by client_reference_id) to confirm payments, then mark entrants paid here to unlock their dashboard. Safety flags appear for any entrant losing more than ~3% body weight in a single week.</p>
-  </section>
-
-  <!-- COMPETITION SETTINGS -->
-  <section style="padding:36px 0;">
-    <div class="sec-head">
-      <div class="sec-eyebrow">Public Site</div>
-      <h2>Competition Settings</h2>
     </div>
 
-    <div class="card" id="settingsCard" style="margin-bottom:28px;">
-      <div class="msg" id="settingsMsg"></div>
-      <div class="two-col">
-        <div class="form-row">
-          <label for="setName">Challenge name</label>
-          <input type="text" id="setName">
+    <!-- ENTRANTS TAB -->
+    <div class="admin-panel" id="panel-entrants">
+      <div class="admin-bar">
+        <div class="filter-row">
+          <input type="text" id="searchInput" placeholder="Search name or email..." oninput="renderTable()">
+          <select id="filterPaid" onchange="renderTable()">
+            <option value="all">All payment statuses</option>
+            <option value="unpaid">Unpaid only</option>
+            <option value="paid">Paid only</option>
+          </select>
+          <select id="filterChallenge" onchange="renderTable()">
+            <option value="all">All cohorts</option>
+            <option value="unassigned">Unassigned</option>
+          </select>
         </div>
-        <div class="form-row">
-          <label for="setEyebrow">Eyebrow text</label>
-          <input type="text" id="setEyebrow">
-          <p class="hint">Small line above the headline. Avoid em dashes.</p>
-        </div>
-      </div>
-      <div class="form-row">
-        <label for="setHeadline">Hero headline</label>
-        <textarea id="setHeadline" rows="2"></textarea>
-        <p class="hint">Use &lt;br&gt; for line breaks. HTML is allowed.</p>
-      </div>
-      <div class="form-row">
-        <label for="setSub">Hero subheadline</label>
-        <textarea id="setSub" rows="3"></textarea>
-      </div>
-      <div class="form-row">
-        <label for="setVideo">Intro video URL</label>
-        <input type="url" id="setVideo" placeholder="https://youtube.com/embed/... or hosted MP4">
-        <p class="hint">Leave blank to hide the video slot on the homepage.</p>
-      </div>
-      <div class="two-col">
-        <div class="form-row">
-          <label for="setPrize">Prize pool ($)</label>
-          <input type="number" id="setPrize" min="0" step="1">
+        <div class="admin-actions">
+          <button class="admin-btn" onclick="loadData()">Refresh</button>
+          <button class="admin-btn" onclick="exportCsv()">Export CSV</button>
         </div>
       </div>
-      <div class="two-col">
-        <div class="form-row">
-          <label for="setStandardPrice">Standard total price ($)</label>
-          <input type="number" id="setStandardPrice" min="0" step="1">
-        </div>
-        <div class="form-row">
-          <label for="setStandardLink">Standard Stripe payment link</label>
-          <input type="url" id="setStandardLink" placeholder="https://buy.stripe.com/...">
-        </div>
-      </div>
-      <div class="two-col">
-        <div class="form-row">
-          <label for="setF2FPrice">Face-to-Face total price ($)</label>
-          <input type="number" id="setF2FPrice" min="0" step="1">
-        </div>
-        <div class="form-row">
-          <label for="setF2FLink">Face-to-Face Stripe payment link</label>
-          <input type="url" id="setF2FLink" placeholder="https://buy.stripe.com/...">
-        </div>
-      </div>
-      <div class="form-row" style="margin-top:12px;">
-        <button type="button" class="submit-btn" id="saveSettingsBtn" onclick="saveSettings()" style="width:auto;padding:14px 24px;">Save Settings</button>
-      </div>
-    </div>
-  </section>
 
-  <!-- FORECAST PLANNING -->
-  <section style="padding:36px 0;">
-    <div class="sec-head">
-      <div class="sec-eyebrow">Forecasting</div>
-      <h2>Forecast planning</h2>
+      <div id="adminContent">
+        <div class="loading">Loading entrants...</div>
+      </div>
+
+      <p class="note">Use the Stripe Dashboard (filtered by client_reference_id) to confirm payments, then mark entrants paid here to unlock their dashboard. Safety flags appear for any entrant losing more than ~3% body weight in a single week.</p>
     </div>
 
-    <div class="card" id="forecastCard" style="margin-bottom:28px;">
-      <div class="two-col">
-        <div class="form-row">
-          <label for="forecastEntrants">Expected entrants</label>
-          <input type="number" id="forecastEntrants" min="0" value="50" oninput="renderForecast()">
+    <!-- SETTINGS + FORECAST TAB -->
+    <div class="admin-panel" id="panel-settings">
+      <div class="card" id="settingsCard" style="margin-bottom:28px;">
+        <h3 style="font-size:20px;margin-bottom:16px;">Competition Settings</h3>
+        <div class="msg" id="settingsMsg"></div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="setName">Challenge name</label>
+            <input type="text" id="setName">
+          </div>
+          <div class="form-row">
+            <label for="setEyebrow">Eyebrow text</label>
+            <input type="text" id="setEyebrow">
+            <p class="hint">Small line above the headline. Avoid em dashes.</p>
+          </div>
         </div>
         <div class="form-row">
-          <label for="forecastStandardSplit">Standard split (%)</label>
-          <input type="number" id="forecastStandardSplit" min="0" max="100" value="70" oninput="renderForecast()">
-          <p class="hint">The rest will be Face-to-Face entries.</p>
+          <label for="setHeadline">Hero headline</label>
+          <textarea id="setHeadline" rows="2"></textarea>
+          <p class="hint">Use &lt;br&gt; for line breaks. HTML is allowed.</p>
+        </div>
+        <div class="form-row">
+          <label for="setSub">Hero subheadline</label>
+          <textarea id="setSub" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="setVideo">Intro video URL</label>
+          <input type="url" id="setVideo" placeholder="https://youtube.com/embed/... or hosted MP4">
+          <p class="hint">Leave blank to hide the video slot on the homepage.</p>
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="setPrize">Prize pool ($)</label>
+            <input type="number" id="setPrize" min="0" step="1">
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="setStandardPrice">Standard total price ($)</label>
+            <input type="number" id="setStandardPrice" min="0" step="1">
+          </div>
+          <div class="form-row">
+            <label for="setStandardLink">Standard Stripe payment link</label>
+            <input type="url" id="setStandardLink" placeholder="https://buy.stripe.com/...">
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="setF2FPrice">Face-to-Face total price ($)</label>
+            <input type="number" id="setF2FPrice" min="0" step="1">
+          </div>
+          <div class="form-row">
+            <label for="setF2FLink">Face-to-Face Stripe payment link</label>
+            <input type="url" id="setF2FLink" placeholder="https://buy.stripe.com/...">
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:12px;">
+          <button type="button" class="submit-btn" id="saveSettingsBtn" onclick="saveSettings()" style="width:auto;padding:14px 24px;">Save Settings</button>
         </div>
       </div>
-      <div class="two-col">
-        <div class="form-row">
-          <label for="forecastFixedCosts">Fixed costs ($)</label>
-          <input type="number" id="forecastFixedCosts" min="0" step="1" value="0" placeholder="Venue, coaching overheads, marketing..." oninput="renderForecast()">
-        </div>
-        <div class="form-row">
-          <label for="forecastPrizePool">Prize pool from settings ($)</label>
-          <input type="text" id="forecastPrizePool" readonly style="background:var(--paper-3);color:var(--ink-soft);">
-        </div>
-      </div>
-      <p class="hint">Prices are pulled from Competition Settings. Update them there and the forecast will recalculate.</p>
 
-      <div id="forecastResults">
-        <div class="empty">Save Competition Settings first to enable forecasting.</div>
+      <div class="card" id="forecastCard" style="margin-bottom:28px;">
+        <h3 style="font-size:20px;margin-bottom:16px;">Forecast Planning</h3>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="forecastEntrants">Expected entrants</label>
+            <input type="number" id="forecastEntrants" min="0" value="50" oninput="renderForecast()">
+          </div>
+          <div class="form-row">
+            <label for="forecastStandardSplit">Standard split (%)</label>
+            <input type="number" id="forecastStandardSplit" min="0" max="100" value="70" oninput="renderForecast()">
+            <p class="hint">The rest will be Face-to-Face entries.</p>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="form-row">
+            <label for="forecastFixedCosts">Fixed costs ($)</label>
+            <input type="number" id="forecastFixedCosts" min="0" step="1" value="0" placeholder="Venue, coaching overheads, marketing..." oninput="renderForecast()">
+          </div>
+          <div class="form-row">
+            <label for="forecastPrizePool">Prize pool from settings ($)</label>
+            <input type="text" id="forecastPrizePool" readonly style="background:var(--paper-3);color:var(--ink-soft);">
+          </div>
+        </div>
+        <p class="hint">Prices are pulled from Competition Settings. Update them there and the forecast will recalculate.</p>
+
+        <div id="forecastResults">
+          <div class="empty">Save Competition Settings first to enable forecasting.</div>
+        </div>
       </div>
     </div>
-  </section>
 
-  <section style="padding:36px 0;">
-    <div class="sec-head">
-      <div class="sec-eyebrow">Community Moderation</div>
-      <h2>Cohort Chat</h2>
-    </div>
+    <!-- CHAT TAB -->
+    <div class="admin-panel" id="panel-chat">
+      <div class="card">
+        <div class="filter-row">
+          <select id="chatCohortSelect" onchange="loadAdminChat()">
+            <option value="">Select a cohort...</option>
+          </select>
+        </div>
 
-    <div class="card">
-      <div class="filter-row">
-        <select id="chatCohortSelect" onchange="loadAdminChat()">
-          <option value="">Select a cohort...</option>
-        </select>
-      </div>
-
-      <div id="adminChatFeed" class="admin-chat-feed">
-        <div class="empty">Select a cohort to view its chat.</div>
+        <div id="adminChatFeed" class="admin-chat-feed">
+          <div class="empty">Select a cohort to view its chat.</div>
+        </div>
       </div>
     </div>
   </section>
@@ -333,6 +364,18 @@
   function getChallengeName(id){
     const c = allChallenges.find(function(x){ return x.id === id; });
     return c ? (c.name || 'Unnamed') : 'Unassigned';
+  }
+
+  function switchTab(tab){
+    document.querySelectorAll('.admin-tab').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('.admin-panel').forEach(function(p){
+      p.classList.toggle('active', p.id === 'panel-' + tab);
+    });
+    if(tab === 'chat'){
+      populateChatCohortSelect();
+    }
   }
 
   async function init(){
