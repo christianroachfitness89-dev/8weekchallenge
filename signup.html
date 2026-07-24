@@ -5,8 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>8-Week Challenge · Sign Up</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/main.css">
+<style>
+  .signup-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:60px;align-items:start;}
+  .signup-intro{position:sticky;top:110px;}
+  @media(max-width:900px){
+    .signup-grid{grid-template-columns:1fr;}
+    .signup-intro{position:static;margin-bottom:32px;}
+  }
+</style>
 </head>
 <body>
 
@@ -23,83 +31,92 @@
 
 <div class="wrap">
 
-  <section id="signup" style="padding:48px 0 64px;">
-    <div class="sec-head" style="text-align:center;">
-      <div class="sec-eyebrow">Reserve Your Entry</div>
-      <h2>Create your account &amp; pay</h2>
-      <p class="mb-3">All weights are tracked in kilograms. Payment is collected securely through Stripe.</p>
-    </div>
-
-    <form class="form-card" id="signupForm" onsubmit="handleSubmit(event)">
-      <div class="two-col">
-        <div class="form-row">
-          <label for="fname">Full name</label>
-          <input type="text" id="fname" required placeholder="Jordan Riley">
-        </div>
-        <div class="form-row">
-          <label for="fphone">Phone</label>
-          <input type="tel" id="fphone" required placeholder="(555) 555-5555">
+  <section style="padding:80px 0;">
+    <div class="signup-grid">
+      <div class="signup-intro">
+        <div class="sec-eyebrow">Reserve Your Entry</div>
+        <h2 style="font-size:clamp(32px,4vw,46px);">Create your account &amp; pay</h2>
+        <p style="font-size:17px;line-height:1.7;">
+          All weights are tracked in kilograms. Payment is collected securely through Stripe. Your spot is reserved once payment is confirmed.
+        </p>
+        <div class="prize-card" style="margin-top:32px;max-width:100%;">
+          <div class="prize-label">Selected format</div>
+          <div class="prize-amount" id="summaryPrice" style="font-size:42px;">$280</div>
+          <div class="prize-desc" id="summaryPerWeek">$35 / week · 8 weeks</div>
         </div>
       </div>
 
-      <div class="form-row">
-        <label for="femail">Email</label>
-        <input type="email" id="femail" required placeholder="you@email.com">
-      </div>
+      <form class="form-card" id="signupForm" onsubmit="handleSubmit(event)" style="padding:38px;background:#fff;">
+        <div class="two-col">
+          <div class="form-row">
+            <label for="fname">Full name</label>
+            <input type="text" id="fname" required placeholder="Jordan Riley">
+          </div>
+          <div class="form-row">
+            <label for="fphone">Phone</label>
+            <input type="tel" id="fphone" required placeholder="(555) 555-5555">
+          </div>
+        </div>
 
-      <div class="two-col">
         <div class="form-row">
-          <label for="fpassword">Password</label>
-          <input type="password" id="fpassword" required minlength="8" placeholder="At least 8 characters">
+          <label for="femail">Email</label>
+          <input type="email" id="femail" required placeholder="you@email.com">
         </div>
+
+        <div class="two-col">
+          <div class="form-row">
+            <label for="fpassword">Password</label>
+            <input type="password" id="fpassword" required minlength="8" placeholder="At least 8 characters">
+          </div>
+          <div class="form-row">
+            <label for="fpassword2">Confirm password</label>
+            <input type="password" id="fpassword2" required minlength="8" placeholder="Repeat password">
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="form-row">
+            <label for="fweight">Starting weight (kg)</label>
+            <input type="number" id="fweight" required min="30" max="300" step="0.1" placeholder="82.5">
+            <p class="hint">Your official Week 0 baseline in kilograms.</p>
+          </div>
+          <div class="form-row">
+            <label for="fage">Age</label>
+            <input type="number" id="fage" required min="16" max="99" placeholder="28">
+          </div>
+        </div>
+
         <div class="form-row">
-          <label for="fpassword2">Confirm password</label>
-          <input type="password" id="fpassword2" required minlength="8" placeholder="Repeat password">
+          <label>Format</label>
+          <div class="tier-toggle">
+            <label class="tier-opt checked" id="opt-standard">
+              <input type="radio" name="tier" value="standard" checked onchange="updateTier(this)">
+              <div class="t-name">Standard</div>
+              <div class="t-price" id="standardTierPrice">$35/week · $280 total</div>
+            </label>
+            <label class="tier-opt" id="opt-f2f">
+              <input type="radio" name="tier" value="f2f" onchange="updateTier(this)">
+              <div class="t-name">Face-to-Face</div>
+              <div class="t-price" id="f2fTierPrice">$99/week · $792 total</div>
+            </label>
+          </div>
         </div>
-      </div>
 
-      <div class="two-col">
-        <div class="form-row">
-          <label for="fweight">Starting weight (kg)</label>
-          <input type="number" id="fweight" required min="30" max="300" step="0.1" placeholder="82.5">
-          <p class="hint">Your official Week 0 baseline in kilograms.</p>
+        <div class="check-row">
+          <input type="checkbox" id="fwaiver" required>
+          <label for="fwaiver">I confirm I am 18+ (or 16+ with guardian consent), have no medical condition that makes this program unsafe (or I've been cleared by a physician), and I agree to the challenge rules and waiver.</label>
         </div>
-        <div class="form-row">
-          <label for="fage">Age</label>
-          <input type="number" id="fage" required min="16" max="99" placeholder="28">
-        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">Create Account &amp; Pay <span id="btnPrice">$280</span></button>
+        <div class="form-note" style="font-size:12px;color:var(--ink-soft);margin-top:10px;">You'll be redirected to Stripe to complete payment. Your spot is reserved once payment is confirmed.</div>
+        <div class="msg" id="formMsg"></div>
+      </form>
+
+      <div class="confirm" id="confirmBox" style="grid-column:1 / -1;">
+        <div class="confirm-mark">✓</div>
+        <h3>Account created</h3>
+        <p id="confirmText">Redirecting you to Stripe to complete payment...</p>
       </div>
-
-      <div class="form-row">
-        <label>Format</label>
-        <div class="tier-toggle">
-          <label class="tier-opt checked" id="opt-standard">
-            <input type="radio" name="tier" value="standard" checked onchange="updateTier(this)">
-            <div class="t-name">Standard</div>
-            <div class="t-price" id="standardTierPrice">$35/week · $280 total</div>
-          </label>
-          <label class="tier-opt" id="opt-f2f">
-            <input type="radio" name="tier" value="f2f" onchange="updateTier(this)">
-            <div class="t-name">Face-to-Face</div>
-            <div class="t-price" id="f2fTierPrice">$99/week · $792 total</div>
-          </label>
-        </div>
-      </div>
-
-      <div class="check-row">
-        <input type="checkbox" id="fwaiver" required>
-        <label for="fwaiver">I confirm I am 18+ (or 16+ with guardian consent), have no medical condition that makes this program unsafe (or I've been cleared by a physician), and I agree to the challenge rules and waiver.</label>
-      </div>
-
-      <button type="submit" class="submit-btn" id="submitBtn">Create Account &amp; Pay <span id="btnPrice">$280</span></button>
-      <div class="form-note">You'll be redirected to Stripe to complete payment. Your spot is reserved once payment is confirmed.</div>
-      <div class="msg" id="formMsg"></div>
-    </form>
-
-    <div class="confirm" id="confirmBox">
-      <div class="confirm-mark">✓</div>
-      <h3>Account created</h3>
-      <p id="confirmText">Redirecting you to Stripe to complete payment...</p>
     </div>
   </section>
 
@@ -107,7 +124,7 @@
 
 <footer>
   <div class="wrap">
-    <p class="foot-text">By entering, you agree to the full challenge rules, weigh-in verification process, and waiver on file with the program organiser. This challenge is a wellness program, not a medical treatment - consult a physician before beginning any weight-loss program.</p>
+    <p class="foot-text">By entering, you agree to the full challenge rules, weigh-in verification process, and waiver on file with the program organiser. This challenge is a wellness programme, not a medical treatment - consult a physician before beginning any weight-loss programme.</p>
   </div>
 </footer>
 
@@ -119,13 +136,13 @@
   const STRIPE_LINKS = { standard: '', f2f: '' };
   const TIER_PRICES = { standard: 280, f2f: 792 };
 
-  function formatCurrency(amount) {
-    if (amount === null || amount === undefined || isNaN(amount)) return '';
+  function formatCurrency(amount){
+    if(amount === null || amount === undefined || isNaN(amount)) return '';
     return '$' + Number(amount).toLocaleString(undefined, { maximumFractionDigits: 0 });
   }
 
-  function formatPerWeek(total) {
-    if (!total && total !== 0) return '';
+  function formatPerWeek(total){
+    if(!total && total !== 0) return '';
     return '$' + Math.round(total / 8);
   }
 
@@ -134,6 +151,8 @@
     document.getElementById('opt-f2f').classList.toggle('checked', input.value === 'f2f');
     const price = input.value === 'f2f' ? TIER_PRICES.f2f : TIER_PRICES.standard;
     document.getElementById('btnPrice').textContent = formatCurrency(price);
+    document.getElementById('summaryPrice').textContent = formatCurrency(price);
+    document.getElementById('summaryPerWeek').textContent = formatPerWeek(price) + ' / week · 8 weeks';
   }
 
   function showMsg(el, text, type){
@@ -147,9 +166,9 @@
   }
 
   async function loadSettings(){
-    try {
+    try{
       const s = await window.siteSettings.load();
-      if (!s) return;
+      if(!s) return;
 
       TIER_PRICES.standard = Number(s.standard_price) || 280;
       TIER_PRICES.f2f = Number(s.f2f_price) || 792;
@@ -162,7 +181,7 @@
 
       const selected = document.querySelector('input[name="tier"]:checked');
       updateTier(selected);
-    } catch (err) {
+    } catch(err){
       console.error('Settings load failed', err);
     }
   }
@@ -171,13 +190,11 @@
     const tier = getParam('tier');
     if(tier === 'f2f'){
       const radio = document.querySelector('input[name="tier"][value="f2f"]');
-      if(radio){
-        radio.checked = true;
-      }
+      if(radio) radio.checked = true;
     }
     loadSettings().then(function(){
       const checked = document.querySelector('input[name="tier"]:checked');
-      if (checked) updateTier(checked);
+      if(checked) updateTier(checked);
     });
   })();
 
