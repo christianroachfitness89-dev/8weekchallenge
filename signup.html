@@ -10,6 +10,9 @@
 <style>
   .signup-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:60px;align-items:start;}
   .signup-intro{position:sticky;top:110px;}
+  .client-fields{margin-top:10px;padding:16px;border:1.5px solid var(--line);border-radius:var(--radius);background:var(--paper-3);display:none;}
+  .client-fields.show{display:block;}
+  .client-fields .form-row{margin-bottom:0;}
   @media(max-width:900px){
     .signup-grid{grid-template-columns:1fr;}
     .signup-intro{position:static;margin-bottom:32px;}
@@ -39,7 +42,7 @@
         <p style="font-size:17px;line-height:1.7;">
           All weights are tracked in kilograms. Payment is collected securely through Stripe. Your spot is reserved once payment is confirmed.
         </p>
-        <div class="prize-card" style="margin-top:32px;max-width:100%;">
+        <div class="prize-card" id="summaryCard" style="margin-top:32px;max-width:100%;">
           <div class="prize-label">Selected format</div>
           <div class="prize-amount" id="summaryPrice" style="font-size:42px;">$280</div>
           <div class="prize-desc" id="summaryPerWeek">$35 / week · 8 weeks</div>
@@ -103,6 +106,19 @@
         </div>
 
         <div class="check-row">
+          <input type="checkbox" id="fcurrentclient" onchange="toggleCurrentClient()">
+          <label for="fcurrentclient">I'm a current client</label>
+        </div>
+
+        <div class="client-fields" id="clientFields">
+          <div class="form-row">
+            <label for="fclientpin">Current client PIN</label>
+            <input type="password" id="fclientpin" inputmode="numeric" maxlength="10" placeholder="Enter PIN">
+            <p class="hint">Enter your current client PIN to skip payment and sign up directly.</p>
+          </div>
+        </div>
+
+        <div class="check-row">
           <input type="checkbox" id="fwaiver" required>
           <label for="fwaiver">I confirm I am 18+ (or 16+ with guardian consent), have no medical condition that makes this program unsafe (or I've been cleared by a physician), and I agree to the challenge rules and waiver.</label>
         </div>
@@ -150,9 +166,25 @@
     document.getElementById('opt-standard').classList.toggle('checked', input.value === 'standard');
     document.getElementById('opt-f2f').classList.toggle('checked', input.value === 'f2f');
     const price = input.value === 'f2f' ? TIER_PRICES.f2f : TIER_PRICES.standard;
-    document.getElementById('btnPrice').textContent = formatCurrency(price);
+    const isClient = document.getElementById('fcurrentclient').checked;
+    document.getElementById('btnPrice').textContent = isClient ? '' : formatCurrency(price);
     document.getElementById('summaryPrice').textContent = formatCurrency(price);
     document.getElementById('summaryPerWeek').textContent = formatPerWeek(price) + ' / week · 8 weeks';
+  }
+
+  function toggleCurrentClient(){
+    const checkbox = document.getElementById('fcurrentclient');
+    const fields = document.getElementById('clientFields');
+    const summary = document.getElementById('summaryCard');
+    const btn = document.getElementById('submitBtn');
+    const note = document.querySelector('.form-note');
+    const tier = document.querySelector('input[name="tier"]:checked').value;
+    const isClient = checkbox.checked;
+
+    fields.classList.toggle('show', isClient);
+    summary.style.display = isClient ? 'none' : 'block';
+    btn.innerHTML = isClient ? 'Create Account' : 'Create Account &amp; Pay <span id="btnPrice">' + formatCurrency(TIER_PRICES[tier]) + '</span>';
+    if(note) note.textContent = isClient ? 'Current clients can sign up directly with a valid PIN.' : "You'll be redirected to Stripe to complete payment. Your spot is reserved once payment is confirmed.";
   }
 
   function showMsg(el, text, type){
@@ -212,6 +244,8 @@
     const weight = parseFloat(document.getElementById('fweight').value);
     const age = parseInt(document.getElementById('fage').value, 10);
     const tier = document.querySelector('input[name="tier"]:checked').value;
+    const isClient = document.getElementById('fcurrentclient').checked;
+    const clientPin = document.getElementById('fclientpin').value.trim();
 
     if(password !== password2){
       showMsg(msg, 'Passwords do not match.', 'error');
@@ -228,7 +262,12 @@
       return;
     }
 
-    if(!STRIPE_LINKS[tier] || STRIPE_LINKS[tier].includes('YOUR_')){
+    if(isClient){
+      if(clientPin !== '4167'){
+        showMsg(msg, 'Invalid current client PIN.', 'error');
+        return;
+      }
+    } else if(!STRIPE_LINKS[tier] || STRIPE_LINKS[tier].includes('YOUR_')){
       showMsg(msg, 'Payment link is not configured yet. Please contact the organiser.', 'error');
       return;
     }
@@ -242,32 +281,40 @@
         phone: phone,
         tier: tier,
         starting_weight_kg: weight,
-        age: age
+        age: age,
+        paid: isClient
       });
 
       if(!user){
         showMsg(msg, 'Sign-up succeeded but no user was returned. Please try logging in.', 'info');
         btn.disabled = false;
-        btn.innerHTML = 'Create Account &amp; Pay <span id="btnPrice">' + formatCurrency(TIER_PRICES[tier]) + '</span>';
+        toggleCurrentClient();
         return;
       }
 
       document.getElementById('signupForm').style.display = 'none';
       document.getElementById('confirmBox').classList.add('show');
 
-      const stripeUrl = new URL(STRIPE_LINKS[tier]);
-      stripeUrl.searchParams.set('client_reference_id', user.id);
-      stripeUrl.searchParams.set('prefilled_email', email);
+      let redirectUrl = 'dashboard.html';
+      if(!isClient){
+        const stripeUrl = new URL(STRIPE_LINKS[tier]);
+        stripeUrl.searchParams.set('client_reference_id', user.id);
+        stripeUrl.searchParams.set('prefilled_email', email);
+        redirectUrl = stripeUrl.toString();
+        document.getElementById('confirmText').textContent = 'Redirecting you to Stripe to complete payment...';
+      } else {
+        document.getElementById('confirmText').textContent = 'Welcome back. Redirecting you to your dashboard...';
+      }
 
       setTimeout(function(){
-        window.location.href = stripeUrl.toString();
-      }, 1200);
+        window.location.href = redirectUrl;
+      }, 1500);
 
     } catch(err){
       console.error(err);
       showMsg(msg, err.message || 'Something went wrong creating your account. Please try again.', 'error');
       btn.disabled = false;
-      btn.innerHTML = 'Create Account &amp; Pay <span id="btnPrice">' + formatCurrency(TIER_PRICES[tier]) + '</span>';
+      toggleCurrentClient();
     }
   }
 </script>
