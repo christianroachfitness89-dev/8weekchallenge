@@ -79,6 +79,17 @@
   .admin-chat-bubble .chat-name{font-weight:600;color:var(--ink);}
   .admin-chat-bubble .chat-content{font-size:14px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
   .admin-chat-actions{display:flex;gap:10px;margin-top:10px;}
+
+  .forecast-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin:16px 0;}
+  .forecast-box{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:16px;}
+  .forecast-box .fb-label{font-size:11px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;color:var(--ink-soft);}
+  .forecast-box .fb-value{font-size:22px;font-weight:700;margin-top:6px;}
+  .forecast-box .fb-note{font-size:12px;color:var(--ink-soft);margin-top:4px;}
+  .forecast-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:16px;}
+  .forecast-table th,.forecast-table td{text-align:left;padding:10px;border-bottom:1px solid var(--line);}
+  .forecast-table th{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;color:var(--ink-soft);}
+  .forecast-table td.num{text-align:right;}
+  .forecast-note{font-size:13px;color:var(--ink-soft);margin-top:12px;}
 </style>
 </head>
 <body>
@@ -222,6 +233,43 @@
       </div>
       <div class="form-row" style="margin-top:12px;">
         <button type="button" class="submit-btn" id="saveSettingsBtn" onclick="saveSettings()" style="width:auto;padding:14px 24px;">Save Settings</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORECAST PLANNING -->
+  <section style="padding:36px 0;">
+    <div class="sec-head">
+      <div class="sec-eyebrow">Forecasting</div>
+      <h2>Forecast planning</h2>
+    </div>
+
+    <div class="card" id="forecastCard" style="margin-bottom:28px;">
+      <div class="two-col">
+        <div class="form-row">
+          <label for="forecastEntrants">Expected entrants</label>
+          <input type="number" id="forecastEntrants" min="0" value="50" oninput="renderForecast()">
+        </div>
+        <div class="form-row">
+          <label for="forecastStandardSplit">Standard split (%)</label>
+          <input type="number" id="forecastStandardSplit" min="0" max="100" value="70" oninput="renderForecast()">
+          <p class="hint">The rest will be Face-to-Face entries.</p>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="form-row">
+          <label for="forecastFixedCosts">Fixed costs ($)</label>
+          <input type="number" id="forecastFixedCosts" min="0" step="1" value="0" placeholder="Venue, coaching overheads, marketing..." oninput="renderForecast()">
+        </div>
+        <div class="form-row">
+          <label for="forecastPrizePool">Prize pool from settings ($)</label>
+          <input type="text" id="forecastPrizePool" readonly style="background:var(--paper-3);color:var(--ink-soft);">
+        </div>
+      </div>
+      <p class="hint">Prices are pulled from Competition Settings. Update them there and the forecast will recalculate.</p>
+
+      <div id="forecastResults">
+        <div class="empty">Save Competition Settings first to enable forecasting.</div>
       </div>
     </div>
   </section>
@@ -837,11 +885,103 @@
       document.getElementById('setStandardLink').value = s.standard_stripe_link || '';
       document.getElementById('setF2FPrice').value = s.f2f_price ?? '';
       document.getElementById('setF2FLink').value = s.f2f_stripe_link || '';
+      document.getElementById('forecastPrizePool').value = fmtCurrency(s.prize_pool || 0);
     } catch(err){
       console.error(err);
       const msg = document.getElementById('settingsMsg');
       showMsg(msg, 'Could not load settings: ' + err.message, 'error');
     }
+  }
+
+  function fmtCurrency(n){
+    if(n === null || n === undefined || isNaN(n)) return '$0';
+    return '$' + Math.round(Number(n)).toLocaleString();
+  }
+
+  function computeForecast(expected, stdPct, fixedCosts){
+    const s = currentSettings;
+    if(!s) return null;
+    const stdPrice = Number(s.standard_price) || 0;
+    const f2fPrice = Number(s.f2f_price) || 0;
+    const prize = Number(s.prize_pool) || 0;
+
+    stdPct = Math.min(1, Math.max(0, stdPct));
+    const stdEntrants = Math.round(expected * stdPct);
+    const f2fEntrants = Math.max(0, expected - stdEntrants);
+    const stdRev = stdEntrants * stdPrice;
+    const f2fRev = f2fEntrants * f2fPrice;
+    const gross = stdRev + f2fRev;
+    const avgTicket = expected > 0 ? gross / expected : 0;
+    const netPrize = gross - prize;
+    const net = netPrize - fixedCosts;
+    const breakEven = avgTicket > 0 && prize > 0 ? Math.ceil(prize / avgTicket) : 0;
+    const prizePct = gross > 0 ? (prize / gross) * 100 : 0;
+    return { stdEntrants, f2fEntrants, stdRev, f2fRev, gross, prize, netPrize, net, avgTicket, breakEven, prizePct };
+  }
+
+  function renderForecast(){
+    const container = document.getElementById('forecastResults');
+    const expected = parseInt(document.getElementById('forecastEntrants').value, 10) || 0;
+    const stdSplit = parseInt(document.getElementById('forecastStandardSplit').value, 10) || 0;
+    const fixedCosts = parseFloat(document.getElementById('forecastFixedCosts').value) || 0;
+
+    const f = computeForecast(expected, stdSplit / 100, fixedCosts);
+    if(!f){
+      container.innerHTML = '<div class="empty">Save Competition Settings first to enable forecasting.</div>';
+      return;
+    }
+
+    const first = f.prize * 0.5;
+    const second = f.prize * 0.3;
+    const third = f.prize * 0.2;
+
+    let html = '<div class="forecast-grid">' +
+      '<div class="forecast-box"><div class="fb-label">Gross revenue</div><div class="fb-value"' + (f.gross < 0 ? ' style="color:var(--red);"' : '') + '>' + fmtCurrency(f.gross) + '</div></div>' +
+      '<div class="forecast-box"><div class="fb-label">Prize pool</div><div class="fb-value">' + fmtCurrency(f.prize) + '</div><div class="fb-note">' + f.prizePct.toFixed(1) + '% of revenue</div></div>' +
+      '<div class="forecast-box"><div class="fb-label">Net after prize pool</div><div class="fb-value"' + (f.netPrize < 0 ? ' style="color:var(--red);"' : '') + '>' + fmtCurrency(f.netPrize) + '</div></div>' +
+      '<div class="forecast-box"><div class="fb-label">Net after fixed costs</div><div class="fb-value"' + (f.net < 0 ? ' style="color:var(--red);"' : '') + '>' + fmtCurrency(f.net) + '</div></div>' +
+      '<div class="forecast-box"><div class="fb-label">Avg ticket</div><div class="fb-value">' + fmtCurrency(f.avgTicket) + '</div></div>' +
+      '<div class="forecast-box"><div class="fb-label">Break-even entrants</div><div class="fb-value">' + f.breakEven + '</div><div class="fb-note">to cover prize pool</div></div>' +
+      '</div>';
+
+    html += '<h4 style="margin-top:24px;font-size:16px;">Prize split</h4>' +
+      '<div class="forecast-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));">' +
+        '<div class="forecast-box"><div class="fb-label">1st place (50%)</div><div class="fb-value">' + fmtCurrency(first) + '</div></div>' +
+        '<div class="forecast-box"><div class="fb-label">2nd place (30%)</div><div class="fb-value">' + fmtCurrency(second) + '</div></div>' +
+        '<div class="forecast-box"><div class="fb-label">3rd place (20%)</div><div class="fb-value">' + fmtCurrency(third) + '</div></div>' +
+      '</div>';
+
+    html += '<h4 style="margin-top:24px;font-size:16px;">Scenario planner</h4>' +
+      '<table class="forecast-table">' +
+        '<thead><tr>' +
+          '<th>Entrants</th><th class="num">Standard</th><th class="num">F2F</th>' +
+          '<th class="num">Gross revenue</th><th class="num">Prize pool</th>' +
+          '<th class="num">Net after prize</th><th class="num">Net after fixed</th>' +
+        '</tr></thead><tbody>';
+
+    const scenarios = [25, 50, 75, 100, 150];
+    scenarios.forEach(function(n){
+      const sc = computeForecast(n, stdSplit / 100, fixedCosts);
+      const highlight = n === expected ? ' style="background:rgba(201,151,31,0.08);"' : '';
+      html += '<tr' + highlight + '>' +
+        '<td>' + n + '</td>' +
+        '<td class="num">' + sc.stdEntrants + '</td>' +
+        '<td class="num">' + sc.f2fEntrants + '</td>' +
+        '<td class="num">' + fmtCurrency(sc.gross) + '</td>' +
+        '<td class="num">' + fmtCurrency(sc.prize) + '</td>' +
+        '<td class="num"' + (sc.netPrize < 0 ? ' style="color:var(--red);"' : '') + '>' + fmtCurrency(sc.netPrize) + '</td>' +
+        '<td class="num"' + (sc.net < 0 ? ' style="color:var(--red);"' : '') + '>' + fmtCurrency(sc.net) + '</td>' +
+      '</tr>';
+    });
+
+    html += '</tbody></table>';
+    html += '<p class="forecast-note">Assumes ' + stdSplit + '% Standard at ' + fmtCurrency(Number(currentSettings.standard_price)||0) + ' and ' + (100 - stdSplit) + '% Face-to-Face at ' + fmtCurrency(Number(currentSettings.f2f_price)||0) + '. Fixed costs are deducted after the prize pool.</p>';
+
+    container.innerHTML = html;
+  }
+
+  async function loadForecastPanel(){
+    renderForecast();
   }
 
   async function saveSettings(){
@@ -881,6 +1021,7 @@
       if(error) throw error;
       showMsg(msg, 'Settings saved. Changes will appear on the homepage and signup page immediately.', 'success');
       await loadSettingsPanel();
+      renderForecast();
     } catch(err){
       console.error(err);
       showMsg(msg, err.message || 'Could not save settings.', 'error');
@@ -890,7 +1031,7 @@
     }
   }
 
-  init().then(loadSettingsPanel);
+  init().then(loadSettingsPanel).then(loadForecastPanel);
 </script>
 
 </body>
