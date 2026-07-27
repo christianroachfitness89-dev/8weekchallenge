@@ -33,7 +33,9 @@
         target_challenge_id: targetId
       });
       if (error) throw error;
-      return data || null;
+      // Postgres functions returning TABLE(...) come back as an array of rows.
+      const row = Array.isArray(data) ? data[0] : data;
+      return row || null;
     } catch (err) {
       console.error('loadSettings error:', err);
       return null;
