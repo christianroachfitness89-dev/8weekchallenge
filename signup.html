@@ -90,6 +90,12 @@
         </div>
 
         <div class="form-row">
+          <label for="freferral">Referral code (optional)</label>
+          <input type="text" id="freferral" placeholder="Friend's code">
+          <p class="hint">Have a referral code? Enter it here. Both you and your friend get recognised when you sign up.</p>
+        </div>
+
+        <div class="form-row">
           <label>Format</label>
           <div class="tier-toggle">
             <label class="tier-opt checked" id="opt-standard">
@@ -197,6 +203,10 @@
     return params.get(name);
   }
 
+  function generateReferralCode(){
+    return Math.random().toString(36).substring(2, 8).toLowerCase();
+  }
+
   async function loadSettings(){
     try{
       const s = await window.siteSettings.load();
@@ -224,6 +234,10 @@
       const radio = document.querySelector('input[name="tier"][value="f2f"]');
       if(radio) radio.checked = true;
     }
+    const ref = getParam('ref');
+    if(ref){
+      document.getElementById('freferral').value = ref;
+    }
     loadSettings().then(function(){
       const checked = document.querySelector('input[name="tier"]:checked');
       if(checked) updateTier(checked);
@@ -243,6 +257,7 @@
     const password2 = document.getElementById('fpassword2').value;
     const weight = parseFloat(document.getElementById('fweight').value);
     const age = parseInt(document.getElementById('fage').value, 10);
+    const referralCode = document.getElementById('freferral').value.trim().toLowerCase();
     const tier = document.querySelector('input[name="tier"]:checked').value;
     const isClient = document.getElementById('fcurrentclient').checked;
     const clientPin = document.getElementById('fclientpin').value.trim();
@@ -282,7 +297,9 @@
         tier: tier,
         starting_weight_kg: weight,
         age: age,
-        paid: isClient
+        paid: isClient,
+        referral_code: referralCode,
+        own_referral_code: generateReferralCode()
       });
 
       if(!user){

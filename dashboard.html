@@ -159,6 +159,12 @@
 
           <!-- Right: progress stats + progress photos -->
           <div class="card-muted">
+            <div id="focusCard" class="focus-card" style="display:none;">
+              <div class="focus-label">This week's focus</div>
+              <div class="focus-text" id="focusText">-</div>
+              <div class="focus-hint" id="focusHint">-</div>
+            </div>
+
             <h3 style="font-size:20px;margin-bottom:16px;">Your progress</h3>
             <div style="display:grid;gap:12px;">
               <div class="progress-stat">
@@ -177,7 +183,14 @@
                 <span class="stat-label">Check-ins logged</span>
                 <span class="stat-value" id="statWeeks">-</span>
               </div>
+              <div class="progress-stat" id="statProjectedWrap" style="display:none;">
+                <span class="stat-label">Projected finish</span>
+                <span class="stat-value" id="statProjected">-</span>
+              </div>
             </div>
+
+            <div id="milestoneBadges" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;"></div>
+
             <p class="note">Remember: only rank and % progress appear on the public leaderboard. Your raw weight stays private.</p>
 
             <div style="margin-top:28px;border-top:1px solid var(--line);padding-top:20px;">
@@ -523,9 +536,75 @@
       const pct = (diff / startWeight) * 100;
       const sign = diff >= 0 ? '-' : '+';
       document.getElementById('statChange').textContent = sign + Math.abs(diff).toFixed(1) + ' kg (' + sign + Math.abs(pct).toFixed(1) + '%)';
+      renderProjectedFinish(startWeight, latest.weight_kg, latest.week, currentChallenge);
     } else {
       document.getElementById('statChange').textContent = '-';
     }
+
+    renderFocusCard(activeWeek, weeksLogged);
+    renderMilestones(weeksLogged, currentChallenge);
+  }
+
+  function renderProjectedFinish(startWeight, latestWeight, latestWeek, challenge){
+    const wrap = document.getElementById('statProjectedWrap');
+    const el = document.getElementById('statProjected');
+    if(!startWeight || !latestWeight || latestWeek === 0 || !challenge){
+      wrap.style.display = 'none';
+      return;
+    }
+    const weeksElapsed = Math.max(1, latestWeek);
+    const totalWeeks = 8;
+    const ratePerWeek = (startWeight - latestWeight) / weeksElapsed;
+    const projectedLoss = ratePerWeek * totalWeeks;
+    const projectedWeight = Math.max(startWeight - projectedLoss, 0);
+    const projectedPct = ((startWeight - projectedWeight) / startWeight) * 100;
+    el.textContent = projectedWeight.toFixed(1) + ' kg (' + projectedPct.toFixed(1) + '%)';
+    wrap.style.display = 'flex';
+  }
+
+  function renderFocusCard(week, weeksLogged){
+    const card = document.getElementById('focusCard');
+    const text = document.getElementById('focusText');
+    const hint = document.getElementById('focusHint');
+    if(week === null){
+      card.style.display = 'none';
+      return;
+    }
+    const focuses = [
+      { title: 'Lock in your baseline', hint: 'Get your Week 0 weigh-in and photo submitted so you are eligible from day one.' },
+      { title: 'Build the weekly rhythm', hint: 'Submit your check-in, log 3+ workouts, and hit your protein target.' },
+      { title: 'Find your momentum', hint: 'Two weeks in. Focus on sleep and hydration to keep the trend moving.' },
+      { title: 'Midpoint checkpoint', hint: 'Week 4 official weigh-in and photo. Use this data to adjust the plan.' },
+      { title: 'Push through the plateau', hint: 'Consistency now separates podium finishers from the pack.' },
+      { title: 'Strength and recovery', hint: 'Prioritise workouts and recovery. Every kg counts from here.' },
+      { title: 'Final sprint starts', hint: 'One week left. Stay tight on nutrition and weigh-in timing.' },
+      { title: 'Finish strong', hint: 'Complete your Week 8 official weigh-in and photo to lock in your result.' }
+    ];
+    const f = focuses[Math.min(week, focuses.length - 1)];
+    text.textContent = f.title;
+    hint.textContent = f.hint;
+    card.style.display = 'block';
+  }
+
+  function renderMilestones(weeksLogged, challenge){
+    const container = document.getElementById('milestoneBadges');
+    container.innerHTML = '';
+    if(!challenge) return;
+
+    const badges = [];
+    if(weeksLogged >= 1) badges.push({ label: 'First check-in', color: 'var(--gold)' });
+    if(weeksLogged >= 4) badges.push({ label: 'Halfway hero', color: 'var(--ink)' });
+    if(weeksLogged >= 6) badges.push({ label: 'Qualifier', color: '#2c5c2c' });
+    if(currentCheckins[0] && currentCheckins[8]) badges.push({ label: 'Book-ends done', color: 'var(--red)' });
+
+    if(!badges.length){
+      container.innerHTML = '<span class="badge" style="background:var(--paper-3);color:var(--ink-soft);">Log your first check-in to earn a milestone badge</span>';
+      return;
+    }
+
+    badges.forEach(function(b){
+      container.innerHTML += '<span class="badge" style="background:' + b.color + ';color:#fff;">' + b.label + '</span>';
+    });
   }
 
   function setCheckinEditable(editable, message){
@@ -755,7 +834,26 @@
         return;
       }
 
-      let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;">';
+      // Build a separate first/last comparison if we have at least two photos.
+      const sortedAsc = [...data].sort(function(a,b){ return new Date(a.created_at) - new Date(b.created_at); });
+      let compareHtml = '';
+      if(sortedAsc.length >= 2){
+        try{
+          const firstUrl = (await client.storage.from('progress-photos').createSignedUrl(sortedAsc[0].photo_path, 300)).data.signedUrl;
+          const lastUrl = (await client.storage.from('progress-photos').createSignedUrl(sortedAsc[sortedAsc.length - 1].photo_path, 300)).data.signedUrl;
+          compareHtml = '<div style="margin-bottom:18px;">' +
+            '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">Then vs now</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+              '<div><img src="' + escapeHtml(firstUrl) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius);border:1px solid var(--line);"><div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">' + new Date(sortedAsc[0].created_at).toLocaleDateString() + '</div></div>' +
+              '<div><img src="' + escapeHtml(lastUrl) + '" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius);border:1px solid var(--line);"><div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">' + new Date(sortedAsc[sortedAsc.length - 1].created_at).toLocaleDateString() + '</div></div>' +
+            '</div>' +
+          '</div>';
+        } catch(err){
+          console.error('Comparison URL error:', err);
+        }
+      }
+
+      let html = compareHtml + '<div style="font-size:12px;font-weight:600;margin-bottom:8px;">All photos</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;">';
       for(const p of data){
         try{
           const { data: urlData, error: urlError } = await client.storage

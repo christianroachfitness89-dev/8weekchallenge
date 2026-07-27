@@ -380,10 +380,47 @@
       document.title = (s.challenge_name || '8-Week Challenge') + ' · Sign Up & Transform';
     }
 
-    window.siteSettings.load().then(apply).catch(function (err) {
-      console.error('Failed to load competition settings', err);
-      apply(fallback);
-    });
+    let activeChallengeId = null;
+
+    async function loadAndApply(){
+      try{
+        const settings = await window.siteSettings.load();
+        activeChallengeId = settings?.challenge_id || null;
+        apply(settings || fallback);
+        renderSpotsRemaining(activeChallengeId);
+      } catch(err){
+        console.error('Failed to load competition settings', err);
+        apply(fallback);
+      }
+    }
+
+    loadAndApply();
+    window.addEventListener('pageshow', function(){ loadAndApply(); });
+
+    async function renderSpotsRemaining(challengeId){
+      if(!challengeId) return;
+      try{
+        const { data: challenge, error: cErr } = await client.from('challenges').select('capacity, starts_at').eq('id', challengeId).single();
+        if(cErr || !challenge || !challenge.capacity) return;
+        const { data: count, error: countErr } = await client.rpc('challenge_entrant_count', { target_challenge_id: challengeId });
+        if(countErr) return;
+        const remaining = Math.max(0, challenge.capacity - (count || 0));
+        const now = new Date();
+        const start = new Date(challenge.starts_at);
+        if(now >= start || remaining <= 0) return;
+
+        const heroSub = document.getElementById('heroSub');
+        const existing = document.getElementById('spotsRemaining');
+        if(existing) existing.remove();
+        const spot = document.createElement('div');
+        spot.id = 'spotsRemaining';
+        spot.className = 'spots-remaining';
+        spot.innerHTML = '<span class="pulse-dot"></span> Only ' + remaining + ' spot' + (remaining === 1 ? '' : 's') + ' left for this cohort';
+        if(heroSub && heroSub.parentNode) heroSub.parentNode.insertBefore(spot, heroSub.nextSibling);
+      } catch(err){
+        console.error('Spots remaining error:', err);
+      }
+    }
 
     // Countdown to the next upcoming challenge.
     (function(){
@@ -391,6 +428,7 @@
       if(!client) return;
 
       let timer = null;
+      let loaded = false;
 
       function pad(n){ return n < 10 ? '0' + n : n; }
 
@@ -437,7 +475,10 @@
         }
       }
 
-      loadCountdown();
+      if(!loaded){
+        loaded = true;
+        loadCountdown();
+      }
     })();
 
     // Simple reveal-on-scroll animation

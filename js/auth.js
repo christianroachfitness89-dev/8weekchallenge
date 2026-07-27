@@ -30,7 +30,9 @@
           age: profileData.age || null,
           paid: profileData.paid === true,
           is_admin: false,
-          challenge_id: null
+          challenge_id: null,
+          referral_code: profileData.own_referral_code || null,
+          referred_by: profileData.referred_by || null
         }, { onConflict: 'id' });
 
       if (profileError) {

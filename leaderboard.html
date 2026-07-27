@@ -58,6 +58,17 @@
       <div class="loading">Loading leaderboard...</div>
     </div>
 
+    <div class="card" id="leaderboardCta" style="margin-top:28px;background:var(--paper-3);border-color:var(--line);display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div>
+          <div class="sec-eyebrow" id="lbCtaEyebrow">Next round</div>
+          <h3 style="margin:4px 0 0;font-size:22px;" id="lbCtaHeadline">Want to be on the next leaderboard?</h3>
+          <p style="margin:6px 0 0;font-size:15px;color:var(--ink-soft);max-width:520px;" id="lbCtaSub">Spots open for the next 8-week cohort.</p>
+        </div>
+        <a href="signup.html" class="btn-primary" id="lbCtaBtn">Enter Now</a>
+      </div>
+    </div>
+
     <p class="note">Only rank, first name + initial, and percent progress are shown. Raw weights stay private. You must complete 6 of 8 weekly check-ins and submit official Week 0 and Week 8 weigh-ins to be prize-eligible.</p>
   </section>
 
@@ -132,6 +143,45 @@
 
     // Auto-refresh every 20 seconds.
     setInterval(refreshLeaderboard, 20000);
+
+    renderLeaderboardCta();
+  }
+
+  async function renderLeaderboardCta(){
+    const card = document.getElementById('leaderboardCta');
+    if(!card) return;
+    try{
+      const settings = await window.siteSettings.load();
+      const { data: nextId, error } = await client.rpc('active_or_next_challenge');
+      if(error) throw error;
+      const targetId = nextId || settings?.challenge_id;
+      if(!targetId){
+        card.style.display = 'block';
+        return;
+      }
+      const c = allChallenges.find(function(x){ return x.id === targetId; });
+      if(!c){
+        card.style.display = 'block';
+        return;
+      }
+      const now = new Date();
+      const baseline = new Date(c.baseline_opens_at);
+      const start = new Date(c.starts_at);
+      if(now >= start){
+        card.style.display = 'none';
+        return;
+      }
+      const days = Math.ceil((baseline - now) / (1000 * 60 * 60 * 24));
+      document.getElementById('lbCtaEyebrow').textContent = c.name || 'Next round';
+      document.getElementById('lbCtaHeadline').textContent = 'Want to be on the next leaderboard?';
+      document.getElementById('lbCtaSub').textContent = 'Next cohort starts ' + fmtDateShort(c.starts_at) +
+        (days > 0 ? ' — baseline opens in ' + days + ' day' + (days === 1 ? '' : 's') + '.' : ' — baseline opens soon.');
+      document.getElementById('lbCtaBtn').href = 'signup.html';
+      card.style.display = 'block';
+    } catch(err){
+      console.error('Leaderboard CTA error:', err);
+      card.style.display = 'block';
+    }
   }
 
   async function onChallengeChange(){

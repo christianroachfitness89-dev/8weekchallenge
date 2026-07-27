@@ -149,6 +149,12 @@
         </div>
       </div>
 
+      <div class="form-row" style="max-width:260px;">
+        <label for="challengeCapacity">Capacity (optional)</label>
+        <input type="number" id="challengeCapacity" min="1" placeholder="e.g. 40">
+        <p class="hint">Set a cap to show scarcity on the homepage. Leave blank for unlimited.</p>
+      </div>
+
       <div class="form-row" style="margin-top:20px;">
         <label class="check-row" style="margin:0;">
           <input type="checkbox" id="useDefaultSettings" checked onchange="toggleCreateSettings()">
@@ -564,7 +570,7 @@
 
     try{
       const [profilesRes, checkinsRes, challengesRes] = await Promise.all([
-        client.from('profiles').select('*').order('created_at', { ascending: false }),
+        client.from('profiles').select('*, referrer:referred_by ( full_name )').order('created_at', { ascending: false }),
         client.from('checkins').select('*').order('week', { ascending: true }),
         client.from('challenges').select('*').order('starts_at', { ascending: false })
       ]);
@@ -573,7 +579,12 @@
       if(checkinsRes.error) throw checkinsRes.error;
       if(challengesRes.error) throw challengesRes.error;
 
-      allProfiles = profilesRes.data || [];
+      allProfiles = (profilesRes.data || []).map(function(p){
+        if(p.referrer && p.referrer.full_name){
+          p.referred_by_name = p.referrer.full_name;
+        }
+        return p;
+      });
       allCheckins = checkinsRes.data || [];
       allChallenges = challengesRes.data || [];
 
@@ -685,10 +696,16 @@
     btn.disabled = true;
     btn.textContent = 'Creating...';
 
+    const capacityRaw = document.getElementById('challengeCapacity').value.trim();
+    const capacity = capacityRaw ? parseInt(capacityRaw, 10) : null;
+
     try{
+      const insertPayload = { name: name, starts_at: start.toISOString(), active: true, locked: false };
+      if(capacity && capacity > 0) insertPayload.capacity = capacity;
+
       const { data, error } = await client
         .from('challenges')
-        .insert({ name: name, starts_at: start.toISOString(), active: true, locked: false })
+        .insert(insertPayload)
         .select()
         .single();
       if(error) throw error;
@@ -702,6 +719,7 @@
       showMsg(msg, 'Cohort created. Baseline opens at ' + fmtDate(data.baseline_opens_at) + '.', 'success');
       nameInput.value = '';
       startInput.value = '';
+      document.getElementById('challengeCapacity').value = '';
       document.getElementById('useDefaultSettings').checked = true;
       toggleCreateSettings();
       await loadData();
@@ -751,10 +769,11 @@
     allChallenges.forEach(function(c){
       const status = c.locked ? 'Archived' : 'Active';
       const statusClass = c.locked ? 'tag tag-unpaid' : 'tag tag-paid';
+      const capacityTag = c.capacity ? '<span class="tag" style="background:var(--paper-3);color:var(--ink-soft);margin-left:6px;">cap ' + c.capacity + '</span>' : '';
       html += '<div class="challenge-row" style="flex-direction:column;align-items:flex-start;gap:8px;" data-id="' + escapeHtml(c.id) + '">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;width:100%;">' +
           '<div>' +
-            '<div class="cr-name">' + escapeHtml(c.name || 'Unnamed') + ' <span class="' + statusClass + '">' + status + '</span></div>' +
+            '<div class="cr-name">' + escapeHtml(c.name || 'Unnamed') + ' <span class="' + statusClass + '">' + status + '</span>' + capacityTag + '</div>' +
             '<div class="cr-dates">Baseline ' + fmtDate(c.baseline_opens_at) + ' · Start ' + fmtDate(c.starts_at) + ' · End ' + fmtDate(c.ends_at) + '</div>' +
           '</div>' +
           '<div class="admin-actions">' +
@@ -1067,7 +1086,9 @@
       const cohortName = getChallengeName(p.challenge_id);
 
       html += '<tr data-id="' + escapeHtml(p.id) + '">' +
-        '<td>' + escapeHtml(p.full_name || '-') + '<br><span style="font-size:12px;color:var(--ink-soft);">' + escapeHtml(p.email || '') + '</span></td>' +
+        '<td>' + escapeHtml(p.full_name || '-') + '<br><span style="font-size:12px;color:var(--ink-soft);">' + escapeHtml(p.email || '') + '</span>' +
+        (p.referral_code ? '<br><span style="font-size:11px;color:var(--gold);font-family:IBM Plex Mono,monospace;">ref: ' + escapeHtml(p.referral_code) + '</span>' : '') +
+        '</td>' +
         '<td>' + (p.tier === 'f2f' ? 'F2F' : 'Standard') + '</td>' +
         '<td><span class="tag ' + (p.paid ? 'tag-paid' : 'tag-unpaid') + '">' + (p.paid ? 'Paid' : 'Unpaid') + '</span></td>' +
         '<td class="assign-cell">' +
@@ -1150,6 +1171,8 @@
       '<div class="detail-item"><div class="di-label">Joined</div><div class="di-value">' + (profile.created_at ? new Date(profile.created_at).toLocaleDateString() : '-') + '</div></div>' +
       '<div class="detail-item"><div class="di-label">Baseline (kg)</div><div class="di-value">' + (m.baseline ? m.baseline.toFixed(1) : '-') + '</div></div>' +
       '<div class="detail-item"><div class="di-label">Latest (kg)</div><div class="di-value">' + (m.latest ? m.latest.weight_kg.toFixed(1) : '-') + '</div></div>' +
+      '<div class="detail-item"><div class="di-label">Referral code</div><div class="di-value">' + escapeHtml(profile.referral_code || '-') + '</div></div>' +
+      '<div class="detail-item"><div class="di-label">Referred by</div><div class="di-value">' + escapeHtml(profile.referred_by_name || profile.referred_by || '-') + '</div></div>' +
     '</div>';
 
     if(checkins.length){

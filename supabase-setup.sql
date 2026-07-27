@@ -23,9 +23,37 @@ create table if not exists public.challenges (
   ends_at timestamptz not null,
   locked boolean not null default false,
   active boolean not null default true,
+  capacity integer check (capacity > 0),
   created_at timestamptz not null default now(),
   constraint valid_dates check (baseline_opens_at < starts_at and starts_at < ends_at)
 );
+
+create table if not exists public.waitlist (
+  id uuid default gen_random_uuid() primary key,
+  challenge_id uuid references public.challenges(id) on delete cascade not null,
+  full_name text not null,
+  email text not null,
+  phone text,
+  notes text,
+  created_at timestamptz not null default now(),
+  unique(email, challenge_id)
+);
+
+alter table public.waitlist enable row level security;
+
+drop policy if exists "Anyone can join waitlist" on public.waitlist;
+create policy "Anyone can join waitlist"
+  on public.waitlist
+  for insert
+  to anon
+  with check (true);
+
+create policy "Admins can read waitlist"
+  on public.waitlist
+  for all
+  to authenticated
+  using (public.is_admin(auth.uid()))
+  with check (public.is_admin(auth.uid()));
 
 -- Automatically compute baseline (48h before start) and end (8 weeks after start).
 create or replace function public.set_challenge_dates()
@@ -41,6 +69,21 @@ drop trigger if exists set_challenge_dates on public.challenges;
 create trigger set_challenge_dates
   before insert or update on public.challenges
   for each row execute function public.set_challenge_dates();
+
+-- Function: count paid entrants in a challenge.
+create or replace function public.challenge_entrant_count(target_challenge_id uuid)
+returns integer
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select count(*)::integer from public.profiles
+  where challenge_id = target_challenge_id and paid = true;
+$$;
+
+grant execute on function public.challenge_entrant_count(uuid) to anon;
+grant execute on function public.challenge_entrant_count(uuid) to authenticated;
 
 -- ---------- helper function: current challenge week ----------
 -- Returns the active week number (0 during baseline, 1-8 during challenge, null after end).
@@ -70,8 +113,13 @@ create table if not exists public.profiles (
   challenge_id uuid references public.challenges on delete set null,
   starting_weight_kg numeric check (starting_weight_kg > 0),
   age integer check (age between 16 and 99),
+  referral_code text unique,
+  referred_by uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
+
+create index if not exists idx_profiles_referral_code on public.profiles(referral_code);
+create index if not exists idx_profiles_referred_by on public.profiles(referred_by);
 
 create table if not exists public.checkins (
   id uuid default gen_random_uuid() primary key,
@@ -149,6 +197,12 @@ create policy "Users can read own profile"
   for select
   to authenticated
   using (auth.uid() = id);
+
+create policy "Users can read referrer name"
+  on public.profiles
+  for select
+  to authenticated
+  using (auth.uid() = (select referred_by from public.profiles where id = auth.uid()));
 
 create policy "Users can update own profile"
   on public.profiles
@@ -276,22 +330,45 @@ create trigger enforce_challenge_rules
 
 create or replace function public.handle_new_user()
 returns trigger as $$
+DECLARE
+  v_referrer_id uuid;
+  v_referral_code text;
 begin
-  insert into public.profiles (id, email, full_name, tier, starting_weight_kg, age)
+  -- Look up referrer if a referral code was supplied.
+  v_referral_code := trim(coalesce(new.raw_user_meta_data->>'referral_code', ''));
+  if v_referral_code <> '' then
+    select id into v_referrer_id from public.profiles where referral_code = v_referral_code limit 1;
+  end if;
+
+  -- Generate a unique referral code for the new user if one is not provided.
+  if new.raw_user_meta_data->>'own_referral_code' is not null then
+    v_referral_code := new.raw_user_meta_data->>'own_referral_code';
+  else
+    v_referral_code := lower(substring(md5(random()::text), 1, 8));
+    while exists (select 1 from public.profiles where referral_code = v_referral_code) loop
+      v_referral_code := lower(substring(md5(random()::text), 1, 8));
+    end loop;
+  end if;
+
+  insert into public.profiles (id, email, full_name, tier, starting_weight_kg, age, referral_code, referred_by)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', new.email),
     coalesce(new.raw_user_meta_data->>'tier', 'standard'),
     (new.raw_user_meta_data->>'starting_weight_kg')::numeric,
-    (new.raw_user_meta_data->>'age')::integer
+    (new.raw_user_meta_data->>'age')::integer,
+    v_referral_code,
+    v_referrer_id
   )
   on conflict (id) do update set
     email = excluded.email,
     full_name = excluded.full_name,
     tier = excluded.tier,
     starting_weight_kg = coalesce(excluded.starting_weight_kg, profiles.starting_weight_kg),
-    age = coalesce(excluded.age, profiles.age);
+    age = coalesce(excluded.age, profiles.age),
+    referral_code = coalesce(profiles.referral_code, excluded.referral_code),
+    referred_by = coalesce(profiles.referred_by, excluded.referred_by);
   return new;
 end;
 $$ language plpgsql security definer;
